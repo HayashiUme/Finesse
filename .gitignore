@@ -1,0 +1,14 @@
+node_modules/
+dist/
+coverage/
+*.user
+*.suo
+bin/
+obj/
+.vs/
+.env.local
+*.tsbuildinfo
+finesse.json
+finesse.json.*.tmp
+tests/
+docs/
