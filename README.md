@@ -3,7 +3,7 @@
 Server management platform for Impostor.
 
 - `dashboard/`: Dashboard built with React, TypeScript, and Vite.
-- `plugin/`: Management plugin built with .NET 8 and Impostor.Api.
+- `plugin/`: Management plugin built with .NET 10 and Impostor.Api.
 
 ## Installation and Connection
 

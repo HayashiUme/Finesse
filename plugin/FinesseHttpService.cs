@@ -29,8 +29,9 @@ public sealed class FinesseHttpService : BackgroundService
         _listener.Prefixes.Add(options.Url);
     }
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    public override Task StartAsync(CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         try { _listener.Start(); }
         catch (HttpListenerException ex)
         {
@@ -38,6 +39,11 @@ public sealed class FinesseHttpService : BackgroundService
         }
         _logger.LogInformation("Finesse API listening on {Url}. Configuration: {ConfigPath}", _options.Url, Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "finesse.json"));
 
+        return base.StartAsync(cancellationToken);
+    }
+
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
         try
         {
             while (!stoppingToken.IsCancellationRequested)
@@ -54,10 +60,10 @@ public sealed class FinesseHttpService : BackgroundService
         }
     }
 
-    public override Task StopAsync(CancellationToken cancellationToken)
+    public override async Task StopAsync(CancellationToken cancellationToken)
     {
-        if (_listener.IsListening) _listener.Stop();
-        return base.StopAsync(cancellationToken);
+        try { await base.StopAsync(cancellationToken); }
+        finally { if (_listener.IsListening) _listener.Stop(); }
     }
 
     public override void Dispose()
