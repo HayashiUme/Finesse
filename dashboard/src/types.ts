@@ -29,4 +29,8 @@ export type Snapshot = Overview & { games: Game[]; players: Player[] }
 
 export type Connection = { name: string; baseUrl: string; apiKey: string }
 
+export type SavedServer = Connection & { id: string }
+export type ServerRegistry = { version: 1; servers: SavedServer[]; activeServerId: string | null }
+export type WorkspaceView = 'overview' | 'players' | 'games' | 'audit'
+
 export type AuditEntry = { timestamp: string; action: string; target: string; success: boolean; detail: string }
