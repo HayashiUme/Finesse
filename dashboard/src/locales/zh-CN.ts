@@ -3,6 +3,10 @@ import type en from './en'
 const zhCN: Record<keyof typeof en, string> = {
   appTitle: 'Finesse · Impostor 管理台',
   language: '界面语言',
+  theme: '界面主题',
+  themeLight: '浅色',
+  themeDark: '深色',
+  themeSystem: '跟随系统',
   brandControl: '服务器控制',
   brandManagement: 'IMPOSTOR 管理平台',
   serverManagement: '服务器管理',

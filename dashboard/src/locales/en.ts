@@ -1,6 +1,10 @@
 const en = {
   appTitle: 'Finesse · Impostor Dashboard',
   language: 'Interface language',
+  theme: 'Color theme',
+  themeLight: 'Light',
+  themeDark: 'Dark',
+  themeSystem: 'System',
   brandControl: 'SERVER CONTROL',
   brandManagement: 'IMPOSTOR MANAGEMENT',
   serverManagement: 'SERVER MANAGEMENT',

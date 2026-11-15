@@ -6,6 +6,7 @@ import { fetchAudit, fetchSnapshot, forgetConnection, gameAction, getConnection,
 import { useRealtime } from './useRealtime'
 import { errorMessage, LocalizedError, type TranslationKey } from './i18n'
 import LanguageSwitcher from './LanguageSwitcher'
+import ThemeSwitcher from './ThemeSwitcher'
 import type { Connection, Game, Player } from './types'
 
 const emptyConnection: Connection = { name: '', baseUrl: 'http://127.0.0.1:8097', apiKey: '' }
@@ -136,7 +137,7 @@ export default function App() {
     </aside>
 
     <main className="main-area">
-      <header className="topbar"><div className="breadcrumbs"><span>{connection.name}</span><span className="crumb-slash">/</span><b>{t(navItems.find(item => item.id === view)!.label)}</b></div><div className="top-actions"><LanguageSwitcher /><div className="connection-pill" title={t(live ? 'live' : 'polling')}><span className="server-dot" />{t(live ? 'live' : 'polling')}</div><button className="icon-btn" onClick={() => { void query.refetch(); if (view === 'audit') void audit.refetch() }} title={t('refresh')} aria-label={t('refresh')}><RefreshCw size={16} /></button><button className="help-circle" onClick={() => setHelpOpen(true)} title={t('help')} aria-label={t('help')}>?</button></div></header>
+      <header className="topbar"><div className="breadcrumbs"><span>{connection.name}</span><span className="crumb-slash">/</span><b>{t(navItems.find(item => item.id === view)!.label)}</b></div><div className="top-actions"><ThemeSwitcher /><LanguageSwitcher /><div className="connection-pill" title={t(live ? 'live' : 'polling')}><span className="server-dot" />{t(live ? 'live' : 'polling')}</div><button className="icon-btn" onClick={() => { void query.refetch(); if (view === 'audit') void audit.refetch() }} title={t('refresh')} aria-label={t('refresh')}><RefreshCw size={16} /></button><button className="help-circle" onClick={() => setHelpOpen(true)} title={t('help')} aria-label={t('help')}>?</button></div></header>
       <div className="content">
         <div className="page-heading"><div><div className="eyebrow"><span className="pulse-mini" />{t('serverManagement')}</div><h1>{t(titles[view])}</h1><p>{t(live ? 'liveDescription' : 'pollingDescription')}</p></div><div className="heading-actions"><button className="primary-btn" onClick={openSettings}><Settings2 size={16} />{t('settings')}</button></div></div>
 
@@ -190,7 +191,7 @@ function ConfigHelp() {
 function ServerSetup({ initial, error, busy, onConnect }: { initial: Connection; error: string; busy: boolean; onConnect: (connection: Connection) => void }) {
   const { t } = useTranslation()
   const [form, setForm] = useState(initial)
-  return <main className="setup-screen"><div className="setup-top"><div className="brand-mark"><Command size={19} /></div><strong>finesse</strong><span>{t('brandManagement')}</span><LanguageSwitcher /></div><div className="setup-layout">
+  return <main className="setup-screen"><div className="setup-top"><div className="brand-mark"><Command size={19} /></div><strong>finesse</strong><span>{t('brandManagement')}</span><div className="setup-appearance"><ThemeSwitcher /><LanguageSwitcher /></div></div><div className="setup-layout">
     <section className="setup-intro"><div className="setup-emblem"><Server size={25} /></div><div className="setup-kicker">{t('controlPlane')}</div><h1><Trans i18nKey="setupTitle" /></h1><p>{t('setupDescription')}</p><div className="setup-checks"><div><span><Wifi size={14} /></span><div><b>{t('setupLive')}</b><small>{t('setupLiveDescription')}</small></div></div><div><span><ShieldCheck size={14} /></span><div><b>{t('setupActions')}</b><small>{t('setupActionsDescription')}</small></div></div></div></section>
     <form className="setup-form" onSubmit={e => { e.preventDefault(); onConnect(form) }}><div className="setup-form-head"><div><span className="setup-kicker">{t('addServer')}</span><h2>{t('serverConnection')}</h2></div><span className="setup-step">PLUGIN API · V1</span></div><ConnectionFields value={form} onChange={setForm} /><ConfigHelp />{error && <div className="setup-error" role="alert"><WifiOff size={15} /><span>{error}</span></div>}<button className="primary-btn setup-submit" disabled={busy}>{busy ? <LoaderCircle className="spin" size={16} /> : <Wifi size={16} />}{t(busy ? 'verifyingConnection' : 'testAndAdd')}</button><div className="setup-foot"><LockKeyhole size={13} />{t('localStorageNote')}</div></form>
     </div><footer className="setup-footer"><span>FINESSE</span><span>{t('setupFooter')}</span></footer></main>
