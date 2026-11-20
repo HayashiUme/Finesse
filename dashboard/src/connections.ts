@@ -13,7 +13,7 @@ function createId() {
 function parseConnection(value: unknown): Connection | null {
   if (!value || typeof value !== 'object') return null
   const entry = value as Partial<Connection>
-  if (typeof entry.baseUrl !== 'string' || typeof entry.apiKey !== 'string' || typeof entry.name !== 'string') return null
+  if (typeof entry.baseUrl !== 'string' || typeof entry.name !== 'string') return null
   try { return normalizeConnection(entry as Connection, false) } catch { return null }
 }
 
@@ -29,7 +29,9 @@ export function loadServerRegistry(): ServerRegistry {
           if (!connection || typeof entry.id !== 'string' || !entry.id || servers.some(s => s.id === entry.id || s.baseUrl === connection.baseUrl)) continue
           servers.push({ ...connection, id: entry.id })
         }
-        return { version: 1, servers, activeServerId: servers.some(s => s.id === value.activeServerId) ? value.activeServerId : servers[0]?.id ?? null }
+        const registry: ServerRegistry = { version: 1, servers, activeServerId: servers.some(s => s.id === value.activeServerId) ? value.activeServerId : servers[0]?.id ?? null }
+        try { saveServerRegistry(registry) } catch { /* Profiles remain available in memory. */ }
+        return registry
       }
     }
   } catch { /* Try the previous single-server format when the new data is invalid. */ }
@@ -48,7 +50,7 @@ export function loadServerRegistry(): ServerRegistry {
 }
 
 export function saveServerRegistry(registry: ServerRegistry) {
-  try { localStorage.setItem(storageKey, JSON.stringify(registry)) }
+  try { localStorage.setItem(storageKey, JSON.stringify({ ...registry, servers: registry.servers.map(({ id, name, baseUrl }) => ({ id, name, baseUrl })) })) }
   catch { throw new LocalizedError('errorStorage') }
   // Remove the old format only after the replacement has been saved successfully.
   try { localStorage.removeItem(legacyKey) } catch { /* The new registry takes precedence. */ }

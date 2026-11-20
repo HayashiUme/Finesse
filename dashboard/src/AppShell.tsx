@@ -1,13 +1,15 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Check, ChevronDown, ClipboardList, Command, Gamepad2, LayoutDashboard, Plus, RefreshCw, Server, Settings2, Users } from 'lucide-react'
+import { Check, ChevronDown, ClipboardList, Command, Gamepad2, LayoutDashboard, LogOut, Plus, RefreshCw, Server, Settings2, UserRoundCog, Users } from 'lucide-react'
 import { ConfigHelp, Modal } from './ConnectionUI'
 import type { AppView, SavedServer, WorkspaceView } from './types'
+import { useAuth } from './auth'
+import { Avatar } from './AccountSettings'
 
 export type ShellProps = {
   servers: SavedServer[]; current: SavedServer | null; view: AppView
   onSelect: (server: SavedServer) => void; onNavigate: (view: WorkspaceView) => void
-  onSettings: () => void; onDirectory: () => void; onAdd: () => void; onEdit: (server: SavedServer) => void
+  onSettings: () => void; onAccount: () => void; onDirectory: () => void; onAdd: () => void; onEdit: (server: SavedServer) => void
 }
 export type WorkspaceProps = Omit<ShellProps, 'current' | 'view'> & { connection: SavedServer; view: WorkspaceView }
 const navigation = [
@@ -21,8 +23,10 @@ export default function AppShell({ children, live, connected, onRefresh, ...prop
   children: React.ReactNode; live?: boolean; connected?: boolean; onRefresh: () => void
 }) {
   const { t } = useTranslation()
+  const auth = useAuth()
   const [help, setHelp] = useState(false)
-  const title = props.view === 'servers' ? t('navServers') : props.view === 'settings' ? t('preferences') : t(navigation.find(n => n.id === props.view)!.label)
+  const title = props.view === 'servers' ? t('navServers') : props.view === 'settings' ? t('preferences') : props.view === 'account' ? t('accountSettings') : props.view === 'login' ? t('signIn') : t(navigation.find(n => n.id === props.view)!.label)
+  const account = props.current ? auth.sessions[props.current.id]?.user : undefined
   return <div className="app-shell">
     <aside className="sidebar">
       <div className="brand"><div className="brand-mark"><Command size={19} /></div><div><strong>finesse</strong><span>{t('brandControl')}</span></div></div>
@@ -32,10 +36,11 @@ export default function AppShell({ children, live, connected, onRefresh, ...prop
       <div className="nav-caption">{t('workspace')}</div>
       <nav aria-label={t('workspace')}>{navigation.filter(item => item.id !== 'dashboard').map(({ id, label, icon: Icon }) => <button key={id} title={t(label)} disabled={!props.current} className={`nav-link ${props.view === id ? 'active' : ''}`} aria-current={props.view === id ? 'page' : undefined} onClick={() => props.onNavigate(id)}><Icon size={17} /><span>{t(label)}</span></button>)}</nav>
       <div className="nav-caption section-caption">{t('management')}</div>
+      <button className={`nav-link ${props.view === 'account' ? 'active' : ''}`} title={t('accountSettings')} aria-current={props.view === 'account' ? 'page' : undefined} disabled={!props.current} onClick={props.onAccount}><UserRoundCog size={17} /><span>{t('accountSettings')}</span></button>
       <button className={`nav-link ${props.view === 'settings' ? 'active' : ''}`} title={t('preferences')} onClick={props.onSettings}><Settings2 size={17} /><span>{t('preferences')}</span></button>
-      <div className="sidebar-bottom"><div className="user-profile"><div className="avatar">A</div><div><b>{t('admin')}</b><small>{t('apiSession')}</small></div></div></div>
+      <div className="sidebar-bottom"><button className="user-profile" title={t('accountSettings')} onClick={props.onAccount}><Avatar username={account?.username ?? t('admin')} avatar={account?.avatar} /><div><b>{account?.username ?? t('admin')}</b><small>{account?.role === 'superadmin' ? t('superAdminLogin') : account ? t('adminLogin') : t('notSignedIn')}</small></div></button>{account && props.current && <button className="nav-link sign-out-link" aria-label={t('signOut')} title={t('signOutScope', { name: props.current.name })} onClick={() => { void auth.signOut(props.current!); props.onNavigate('dashboard') }}><LogOut size={17} /><span>{t('signOut')}</span></button>}</div>
     </aside>
-    <main className="main-area"><header className="topbar"><div className="breadcrumbs"><span>{props.view === 'servers' ? 'Finesse' : props.current?.name}</span><span className="crumb-slash">/</span><b>{title}</b></div><div className="top-actions">{connected && <div className="connection-pill"><span className="server-dot" />{t(live ? 'live' : 'polling')}</div>}{props.view !== 'settings' && <button className="icon-btn" title={t('refresh')} aria-label={t('refresh')} onClick={onRefresh}><RefreshCw size={16} /></button>}<button className="help-circle" title={t('help')} aria-label={t('help')} onClick={() => setHelp(true)}>?</button></div></header>{props.view !== 'servers' && props.current && <div className="mobile-server-context"><Server size={14} /><b>{props.current.name}</b></div>}<div className="content">{children}</div></main>
+    <main className="main-area"><header className="topbar"><div className="breadcrumbs"><span>{props.view === 'servers' ? 'Finesse' : props.current?.name}</span><span className="crumb-slash">/</span><b>{title}</b></div><div className="top-actions">{connected && <div className="connection-pill"><span className="server-dot" />{t(live ? 'live' : 'polling')}</div>}{props.view !== 'settings' && props.view !== 'account' && <button className="icon-btn" title={t('refresh')} aria-label={t('refresh')} onClick={onRefresh}><RefreshCw size={16} /></button>}<button className="help-circle" title={t('help')} aria-label={t('help')} onClick={() => setHelp(true)}>?</button></div></header>{props.view !== 'servers' && props.current && <div className="mobile-server-context"><Server size={14} /><b>{props.current.name}</b></div>}<div className="content">{children}</div></main>
     {help && <Modal title={t('helpTitle')} onClose={() => setHelp(false)}><ConfigHelp /><p className="modal-copy">{t('originNote')}</p></Modal>}
   </div>
 }

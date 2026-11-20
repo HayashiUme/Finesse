@@ -10,5 +10,6 @@ obj/
 *.tsbuildinfo
 finesse.json
 finesse.json.*.tmp
+finesse-users.json
+finesse-users.json.*.tmp
 tests/
-docs/

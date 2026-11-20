@@ -1,10 +1,9 @@
 import { LocalizedError } from './i18n'
-import type { AuditEntry, Connection, PanelLogin, Snapshot } from './types'
+import type { AuditEntry, Connection, Snapshot, AuthUser, AuthChallenge, LoginResponse, ManagedUser } from './types'
 
 export function normalizeConnection(value: Connection, enforceHttps = true): Connection {
   const name = value.name.trim()
-  const apiKey = value.apiKey.trim()
-  if (!name || !apiKey) throw new LocalizedError('errorRequired')
+  if (!name) throw new LocalizedError('errorRequired')
   let url: URL
   try { url = new URL(value.baseUrl.trim()) } catch { throw new LocalizedError('errorUrl') }
   if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.search || url.hash) {
@@ -13,11 +12,21 @@ export function normalizeConnection(value: Connection, enforceHttps = true): Con
   if (enforceHttps && window.location.protocol === 'https:' && url.protocol === 'http:') {
     throw new LocalizedError('errorHttps')
   }
-  return { name, apiKey, baseUrl: url.toString().replace(/\/+$/, '') }
+  return { name, baseUrl: url.toString().replace(/\/+$/, '') }
 }
 
-async function request(connection: Connection, path: string, body?: object, post = false, signal?: AbortSignal): Promise<string> {
+export function hasSecureTransport(connection: Connection): boolean {
+  const secure = (url: URL) => url.protocol === 'https:' || (url.protocol === 'http:' &&
+    (url.hostname === 'localhost' || url.hostname === '[::1]' || /^127(?:\.\d{1,3}){3}$/.test(url.hostname)))
+  try { return secure(new URL(connection.baseUrl)) && secure(new URL(window.location.href)) }
+  catch { return false }
+}
+
+async function request(connection: Connection, path: string, body?: object, post: boolean | 'PUT' | 'DELETE' = false, signal?: AbortSignal): Promise<string> {
   const normalized = normalizeConnection(connection)
+  if ((connection.token || connection.apiKey || path.startsWith('/api/v1/auth/')) && !hasSecureTransport(normalized)) {
+    throw new LocalizedError('errorSecureTransport')
+  }
   const controller = new AbortController()
   const cancel = () => controller.abort()
   if (signal?.aborted) cancel()
@@ -25,12 +34,27 @@ async function request(connection: Connection, path: string, body?: object, post
   const timer = window.setTimeout(() => controller.abort(), 10000)
   try {
     const response = await fetch(`${normalized.baseUrl}${path}`, {
-      method: post ? 'POST' : 'GET',
-      headers: { 'X-Api-Key': normalized.apiKey, ...(body ? { 'Content-Type': 'application/json' } : {}) },
+      method: typeof post === 'string' ? post : post ? 'POST' : 'GET',
+      headers: { ...(connection.token ? { Authorization: `Bearer ${connection.token}` } : connection.apiKey ? { 'X-Api-Key': connection.apiKey } : {}), ...(body ? { 'Content-Type': 'application/json' } : {}) },
       body: body ? JSON.stringify(body) : undefined,
+      credentials: 'omit',
+      cache: 'no-store',
+      referrerPolicy: 'no-referrer',
       signal: controller.signal,
     })
     if (!response.ok) {
+      let detail: { error?: string; challenge?: AuthChallenge; retryAfterSeconds?: number } = {}
+      try { detail = await response.json() } catch { /* Fall back to HTTP errors for older plugins. */ }
+      if (path.includes('/auth/login/')) {
+        if ((response.status === 401 && ['invalidCredentials', 'captchaInvalid'].includes(detail.error ?? '')) ||
+            (response.status === 429 && detail.error === 'lockedOut')) {
+          throw new LoginError(detail.error!, detail.challenge, detail.retryAfterSeconds ?? 0)
+        }
+        if ([401, 404, 405].includes(response.status)) throw new LocalizedError('errorLoginUnavailable')
+      }
+      if (response.status === 401 && connection.token) window.dispatchEvent(new CustomEvent('finesse-session-expired', { detail: connection.token }))
+      const key = authErrorKeys[(detail.error ?? '') as keyof typeof authErrorKeys]
+      if (key) throw new LocalizedError(key)
       if (response.status === 401) throw new LocalizedError('errorUnauthorized')
       if (response.status === 403) throw new LocalizedError('errorForbidden')
       if (response.status === 404) throw new LocalizedError('errorNotFound')
@@ -87,7 +111,25 @@ export async function fetchOverview(connection: Connection, signal?: AbortSignal
 
 export const fetchAudit = (connection: Connection, signal?: AbortSignal) => getJson<AuditEntry[]>(connection, '/api/v1/audit', signal)
 
-export async function registerPanelLogin(connection: Connection) {
-  const response = await request(connection, '/api/v1/login', undefined, true)
-  try { return JSON.parse(response) as PanelLogin } catch { throw new LocalizedError('errorJson') }
+
+const authErrorKeys = {
+  usernameInvalid: 'usernameInvalid', passwordPolicy: 'passwordPolicy', usernameTaken: 'usernameTaken',
+  userLimitReached: 'userLimitReached', avatarInvalid: 'avatarInvalid', accountStoreUnavailable: 'accountStoreUnavailable',
+  superAdminRequired: 'superAdminRequired', userNotFound: 'errorNotFound', sessionExpired: 'errorUnauthorized',
+} as const
+export class LoginError extends Error {
+  constructor(public code: string, public challenge?: AuthChallenge, public retryAfterSeconds = 0) { super(code) }
+}
+export async function login(connection: Connection, mode: 'admin' | 'superadmin', credentials: object): Promise<LoginResponse> {
+  return JSON.parse(await request(connection, `/api/v1/auth/login/${mode}`, credentials, true))
+}
+export const fetchMe = (connection: Connection) => getJson<{ user: AuthUser }>(connection, '/api/v1/auth/me')
+export const logout = (connection: Connection) => request(connection, '/api/v1/auth/logout', undefined, true)
+export const fetchUsers = (connection: Connection) => getJson<ManagedUser[]>(connection, '/api/v1/auth/users')
+export const createUser = async (connection: Connection, username: string, password: string, avatar: string | null) => {
+  return JSON.parse(await request(connection, '/api/v1/auth/users', { username, password, avatar }, true)) as ManagedUser
+}
+export const deleteUser = (connection: Connection, id: string) => request(connection, `/api/v1/auth/users/${encodeURIComponent(id)}`, undefined, 'DELETE')
+export const updateAvatar = async (connection: Connection, avatar: string | null): Promise<{ user: AuthUser }> => {
+  return JSON.parse(await request(connection, '/api/v1/auth/me/avatar', { avatar }, 'PUT'))
 }

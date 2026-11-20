@@ -7,7 +7,7 @@ import type { Connection } from './types'
 
 export function ConnectionFields({ value, onChange }: { value: Connection; onChange: (value: Connection) => void }) {
   const { t } = useTranslation()
-  return <><label className="field-label">{t('serverName')}<input autoComplete="off" required maxLength={80} value={value.name} onChange={e => onChange({ ...value, name: e.target.value })} placeholder={t('serverNamePlaceholder')} /></label><label className="field-label">{t('pluginUrl')}<input type="url" autoComplete="url" required value={value.baseUrl} onChange={e => onChange({ ...value, baseUrl: e.target.value })} placeholder="http://127.0.0.1:8097" /></label><label className="field-label">{t('apiKey')}<input autoComplete="off" required value={value.apiKey} onChange={e => onChange({ ...value, apiKey: e.target.value })} type="password" placeholder={t('apiKeyPlaceholder')} /></label></>
+  return <><label className="field-label">{t('serverName')}<input autoComplete="off" required maxLength={80} value={value.name} onChange={e => onChange({ ...value, name: e.target.value })} placeholder={t('serverNamePlaceholder')} /></label><label className="field-label">{t('pluginUrl')}<input type="url" autoComplete="url" required value={value.baseUrl} onChange={e => onChange({ ...value, baseUrl: e.target.value })} placeholder="http://127.0.0.1:8097" /></label></>
 }
 
 export function ConfigHelp() {

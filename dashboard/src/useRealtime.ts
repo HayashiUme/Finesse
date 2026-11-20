@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { isSnapshot } from './api'
+import { hasSecureTransport, isSnapshot } from './api'
 import type { Connection } from './types'
 
 export function useRealtime(connection: Connection | null, enabled: boolean) {
@@ -8,14 +8,14 @@ export function useRealtime(connection: Connection | null, enabled: boolean) {
   const queryClient = useQueryClient()
   useEffect(() => {
     setLive(false)
-    if (!enabled || !connection) return
+    if (!enabled || !connection || !connection.token || !hasSecureTransport(connection)) return
     let disposed = false
     let socket: WebSocket | undefined
     let retry: number | undefined
     let watchdog: number | undefined
     const connect = () => {
       if (disposed) return
-      socket = new WebSocket(`${connection.baseUrl.replace(/^http/, 'ws')}/api/v1/events?key=${encodeURIComponent(connection.apiKey)}`)
+      socket = new WebSocket(`${connection.baseUrl.replace(/^http/, 'ws')}/api/v1/events`, ['finesse', `bearer.${connection.token}`])
       const resetWatchdog = () => {
         window.clearTimeout(watchdog)
         watchdog = window.setTimeout(() => socket?.close(), 12000)

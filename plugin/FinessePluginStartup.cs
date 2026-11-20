@@ -13,6 +13,7 @@ public sealed class FinessePluginStartup : IPluginStartup
     public void ConfigureServices(IServiceCollection services)
     {
         services.AddSingleton(FinesseOptions.Load());
+        services.AddSingleton<AuthenticationService>();
         services.AddSingleton<SnapshotService>();
         services.AddSingleton<ManagementService>();
         services.AddHostedService(provider => provider.GetRequiredService<ManagementService>());

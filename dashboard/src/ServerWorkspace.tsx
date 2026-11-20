@@ -1,13 +1,13 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { Activity, ArrowDownToLine, ArrowUpRight, Ban, ClipboardList, Gamepad2, Globe2, LoaderCircle, LogOut, RefreshCw, Search, Server, Settings2, ShieldCheck, Users, WifiOff, X } from 'lucide-react'
-import { fetchAudit, fetchSnapshot, gameAction, playerAction, registerPanelLogin } from './api'
+import { fetchAudit, fetchSnapshot, gameAction, playerAction } from './api'
 import { useRealtime } from './useRealtime'
 import { errorMessage, LocalizedError, type TranslationKey } from './i18n'
 import AppShell, { type WorkspaceProps } from './AppShell'
 import { Modal } from './ConnectionUI'
-import type { Game, PanelLogin, Player } from './types'
+import type { Game, Player } from './types'
 
 const titles = { dashboard: 'navDashboard', players: 'titlePlayers', games: 'titleGames', audit: 'navAudit' } as const
 const filters = [{ id: 'all', label: 'filterAll' }, { id: 'lobby', label: 'lobby' }, { id: 'playing', label: 'playing' }] as const
@@ -26,9 +26,6 @@ export default function ServerWorkspace({ connection, view, ...shell }: Workspac
   const [selectedCode, setSelectedCode] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
   const [notice, setNotice] = useState<Error | null>(null)
-  const [panelLogin, setPanelLogin] = useState<PanelLogin | null>(null)
-  const [loginInfoUnavailable, setLoginInfoUnavailable] = useState(false)
-  const loginStarted = useRef(new Set<string>())
   const queryClient = useQueryClient()
   const live = useRealtime(connection, Boolean(connection))
   const query = useQuery({
@@ -38,31 +35,6 @@ export default function ServerWorkspace({ connection, view, ...shell }: Workspac
   const connected = Boolean(connection && query.isSuccess)
   const audit = useQuery({ queryKey: ['audit', connection], queryFn: ({ signal }) => fetchAudit(connection, signal), enabled: connected && (view === 'audit' || view === 'dashboard'), retry: false, refetchInterval: 1000 })
 
-  useEffect(() => {
-    if (!connected || !connection || loginStarted.current.has(connection.id)) return
-    loginStarted.current.add(connection.id)
-    const sessionKey = `finesse-panel-login:${connection.id}`
-    try {
-      if (window.sessionStorage.getItem(sessionKey)) return
-      window.sessionStorage.setItem(sessionKey, 'pending')
-    } catch { /* The in-memory guard still prevents duplicate requests before a reload. */ }
-    void registerPanelLogin(connection).then(info => {
-      try { window.sessionStorage.setItem(sessionKey, 'recorded') } catch { /* Keep the login visible for this page load. */ }
-      setPanelLogin(info)
-      void queryClient.invalidateQueries({ queryKey: ['audit', connection] })
-    }).catch(() => {
-      loginStarted.current.delete(connection.id)
-      try { window.sessionStorage.removeItem(sessionKey) } catch { /* The login notice can still explain the failure. */ }
-      setLoginInfoUnavailable(true)
-      setPanelLogin({ ip: '', location: null, timestamp: new Date().toISOString() })
-    })
-  }, [connected, connection, queryClient])
-
-  useEffect(() => {
-    if (!panelLogin) return
-    const timeout = window.setTimeout(() => setPanelLogin(null), 3000)
-    return () => window.clearTimeout(timeout)
-  }, [panelLogin])
   const players = query.data?.players ?? []
   const games = query.data?.games ?? []
   const selectedGame = games.find(g => g.code === selectedCode)
@@ -151,7 +123,7 @@ export default function ServerWorkspace({ connection, view, ...shell }: Workspac
 
         {view === 'audit' && <section className="section-block"><div className="section-head"><div><h2>{t('recentActions')}</h2><p>{t('auditDescription')}</p></div></div>{audit.isError ? <div className="setup-error">{errorMessage(audit.error)}</div> : audit.isPending ? <div className="empty-state">{t('loadingAudit')}</div> : <div className="table-wrap"><table><thead><tr><th>{t('time')}</th><th>{t('action')}</th><th>{t('target')}</th><th>{t('loginLocation')}</th><th>{t('result')}</th></tr></thead><tbody>{audit.data?.map((entry, index) => <tr key={`${entry.timestamp}-${index}`}><td>{new Date(entry.timestamp).toLocaleString(i18n.resolvedLanguage)}</td><td>{actionNames[entry.action] ? t(actionNames[entry.action]) : entry.action}</td><td>{entry.target}</td><td>{entry.location === 'local' ? t('loginLocationLocal') : entry.location ?? '—'}</td><td title={auditDetails[entry.detail] ? t(auditDetails[entry.detail]) : entry.detail}>{t(entry.success ? 'success' : 'failure')}</td></tr>)}</tbody></table>{!audit.data?.length && <div className="empty-state"><ClipboardList size={24} /><span>{t('noAudit')}</span></div>}</div>}</section>}
     {selectedCode && <Modal title={t('roomTitle', { code: selectedCode })} onClose={() => setSelectedCode(null)}>{selectedGame ? <><div className="room-detail"><span>{gameStates[selectedGame.state] ? t(gameStates[selectedGame.state]) : selectedGame.state}</span><span>{t('roomPlayers', { count: selectedGame.playerCount, max: selectedGame.maxPlayers })}</span><span>{t(selectedGame.isPublic ? 'publicRoom' : 'privateRoom')}</span></div><div className="room-player-list">{selectedGame.players.map(p => <div key={p.clientId}><b>{p.name}</b><span>{p.isHost ? t('host') : `#${p.clientId}`}</span><button className="secondary-btn" disabled={pending} onClick={() => moderate(p, 'kick')}>{t('kick')}</button></div>)}</div><div className="modal-actions"><button className="secondary-btn" disabled={pending} onClick={() => manageGame(selectedGame, 'privacy')}>{t(selectedGame.isPublic ? 'makePrivate' : 'makePublic')}</button><button className="danger-btn" disabled={pending} onClick={() => manageGame(selectedGame, 'close')}>{t('clearRoom')}</button></div><p className="modal-copy">{t('clearRoomNote')}</p></> : <div className="empty-state">{t('roomOffline')}</div>}</Modal>}
-    {panelLogin && <aside className="panel-login-toast" role="status" aria-live="polite"><ShieldCheck size={18} aria-hidden="true" /><div className="panel-login-toast-copy"><b>{t('actionPanelLogin')}</b><span>{t('loginIp')}: {panelLogin.ip || t('unknown')}</span><small>{t('loginLocation')}: {panelLogin.location === 'local' ? t('loginLocationLocal') : panelLogin.location ?? t('loginLocationUnavailable')}</small>{loginInfoUnavailable && <small>{t('panelLoginUnavailable')}</small>}</div><button className="icon-btn" title={t('dismiss')} aria-label={t('dismiss')} onClick={() => setPanelLogin(null)}><X size={15} /></button></aside>}
+
     {notice && <div className="toast" role="status"><span>{errorMessage(notice)}</span><button className="icon-btn" title={t('dismiss')} aria-label={t('dismiss')} onClick={() => setNotice(null)}><X size={15} /></button></div>}
   </AppShell>
 }

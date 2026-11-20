@@ -11,6 +11,7 @@ namespace Finesse.Plugin;
 public sealed class FinesseHttpService : BackgroundService
 {
     private readonly FinesseOptions _options;
+    private readonly AuthenticationService _authentication;
     private readonly SnapshotService _snapshots;
     private readonly ManagementService _management;
     private readonly ILogger<FinesseHttpService> _logger;
@@ -18,11 +19,13 @@ public sealed class FinesseHttpService : BackgroundService
 
     public FinesseHttpService(
         FinesseOptions options,
+        AuthenticationService authentication,
         SnapshotService snapshots,
         ManagementService management,
         ILogger<FinesseHttpService> logger)
     {
         _options = options;
+        _authentication = authentication;
         _snapshots = snapshots;
         _management = management;
         _logger = logger;
@@ -76,6 +79,10 @@ public sealed class FinesseHttpService : BackgroundService
     {
         try
         {
+            context.Response.Headers["Cache-Control"] = "no-store";
+            context.Response.Headers["Pragma"] = "no-cache";
+            context.Response.Headers["X-Content-Type-Options"] = "nosniff";
+            context.Response.Headers["Referrer-Policy"] = "no-referrer";
             AddCors(context);
             var origin = context.Request.Headers["Origin"];
             if (origin is not null && !_options.AllowsOrigin(origin))
@@ -90,30 +97,47 @@ public sealed class FinesseHttpService : BackgroundService
                 return;
             }
 
-            if (context.Request.IsWebSocketRequest && context.Request.Url?.AbsolutePath == "/api/v1/events")
+            var path = context.Request.Url?.AbsolutePath.TrimEnd('/') ?? string.Empty;
+            var isLoginRequest = context.Request.HttpMethod == "POST" &&
+                path is "/api/v1/auth/login/admin" or "/api/v1/auth/login/superadmin";
+
+            if (context.Request.IsWebSocketRequest && path == "/api/v1/events")
             {
-                var queryKey = context.Request.QueryString["key"];
-                if (!IsAuthorized(queryKey))
+                var token = context.Request.Headers["Sec-WebSocket-Protocol"]?.Split(',')
+                    .Select(value => value.Trim()).FirstOrDefault(value => value.StartsWith("bearer.", StringComparison.Ordinal))?[7..]
+                    ?? context.Request.QueryString["token"];
+                var apiKey = context.Request.QueryString["key"];
+                if (!TryAuthenticate(token, apiKey, out _))
                 {
                     await WriteErrorAsync(context.Response, HttpStatusCode.Unauthorized, "Unauthorized");
                     return;
                 }
 
-                await ServeWebSocketAsync(context, cancellationToken);
+                await ServeWebSocketAsync(context, token, apiKey, cancellationToken);
                 return;
             }
 
-            if (!IsAuthorized(context.Request.Headers["X-Api-Key"]))
+            var authorization = context.Request.Headers["Authorization"];
+            var bearer = authorization?.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) == true
+                ? authorization[7..].Trim()
+                : null;
+            AuthUser? user = null;
+            var credential = context.Request.Headers["X-Api-Key"];
+            if (!isLoginRequest && !TryAuthenticate(bearer, credential, out user))
             {
                 await WriteErrorAsync(context.Response, HttpStatusCode.Unauthorized, "Unauthorized");
                 return;
             }
 
-            await RouteAsync(context, cancellationToken);
+            await RouteAsync(context, cancellationToken, user, bearer);
         }
         catch (ManagementException exception)
         {
             await WriteErrorAsync(context.Response, (HttpStatusCode)exception.Status, exception.Message);
+        }
+        catch (JsonException)
+        {
+            await WriteErrorAsync(context.Response, HttpStatusCode.BadRequest, "invalidJson");
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { context.Response.Abort(); }
         catch (Exception exception)
@@ -127,11 +151,66 @@ public sealed class FinesseHttpService : BackgroundService
         }
     }
 
-    private async Task RouteAsync(HttpListenerContext context, CancellationToken cancellationToken)
+    private async Task RouteAsync(HttpListenerContext context, CancellationToken cancellationToken, AuthUser? user, string? token)
     {
         var request = context.Request;
         var path = request.Url?.AbsolutePath.TrimEnd('/') ?? string.Empty;
-        if (request.HttpMethod == "GET" && path == "/api/v1/health")
+        if (request.HttpMethod == "POST" && path is "/api/v1/auth/login/admin" or "/api/v1/auth/login/superadmin")
+        {
+            var body = await ReadJsonAsync<LoginRequest>(request, 16_384, cancellationToken);
+            var ip = ResolveClientAddress(request)?.ToString() ?? "unknown";
+            var result = path.EndsWith("superadmin", StringComparison.Ordinal)
+                ? _authentication.LoginSuperAdmin(body.ApiKey, ip, body.CaptchaId, body.CaptchaAnswer)
+                : _authentication.LoginAdmin(body.Username, body.Password, ip, body.CaptchaId, body.CaptchaAnswer);
+            context.Response.StatusCode = result.Status;
+            if (result.Session is { } session)
+            {
+                var address = ResolveClientAddress(request);
+                var location = IsLocalAddress(address) ? "local" : null;
+                _management.RecordPanelLogin(ip, location, session.User.Username, true, $"Panel login ({session.User.Role})");
+                await WriteJsonAsync(context.Response, new { session, login = new PanelLoginDto(ip, location, DateTimeOffset.UtcNow) });
+            }
+            else
+            {
+                _management.RecordPanelLogin(ip, null, path.EndsWith("superadmin", StringComparison.Ordinal) ? "superadmin" : body.Username ?? "unknown", false, result.Error ?? "Login failed");
+                await WriteJsonAsync(context.Response, new { error = result.Error, challenge = result.Challenge, retryAfterSeconds = result.RetryAfterSeconds });
+            }
+        }
+        else if (request.HttpMethod == "GET" && path == "/api/v1/auth/me")
+        {
+            await WriteJsonAsync(context.Response, new { user });
+        }
+        else if (request.HttpMethod == "POST" && path == "/api/v1/auth/logout")
+        {
+            _authentication.Logout(token);
+            context.Response.StatusCode = (int)HttpStatusCode.NoContent;
+            context.Response.Close();
+        }
+        else if (request.HttpMethod == "GET" && path == "/api/v1/auth/users")
+        {
+            RequireSuperAdmin(user);
+            await WriteJsonAsync(context.Response, _authentication.GetUsers());
+        }
+        else if (request.HttpMethod == "POST" && path == "/api/v1/auth/users")
+        {
+            RequireSuperAdmin(user);
+            var body = await ReadJsonAsync<CreateUserRequest>(request, 400_000, cancellationToken);
+            await WriteJsonAsync(context.Response, _authentication.CreateUser(body.Username, body.Password, body.Avatar));
+        }
+        else if (request.HttpMethod == "DELETE" && path.StartsWith("/api/v1/auth/users/", StringComparison.Ordinal))
+        {
+            RequireSuperAdmin(user);
+            var id = Uri.UnescapeDataString(path["/api/v1/auth/users/".Length..]);
+            _authentication.DeleteUser(id);
+            context.Response.StatusCode = (int)HttpStatusCode.NoContent;
+            context.Response.Close();
+        }
+        else if (request.HttpMethod == "PUT" && path == "/api/v1/auth/me/avatar")
+        {
+            var body = await ReadJsonAsync<AvatarRequest>(request, 400_000, cancellationToken);
+            await WriteJsonAsync(context.Response, new { user = _authentication.UpdateAvatar(user!, body.Avatar) });
+        }
+        else if (request.HttpMethod == "GET" && path == "/api/v1/health")
         {
             await WriteJsonAsync(context.Response, new { status = "ok", pluginVersion = "0.1.0" });
         }
@@ -140,7 +219,7 @@ public sealed class FinesseHttpService : BackgroundService
             var address = ResolveClientAddress(request);
             var ip = address?.ToString() ?? "unknown";
             var location = IsLocalAddress(address) ? "local" : null;
-            _management.RecordPanelLogin(ip, location);
+            _management.RecordPanelLogin(ip, location, user?.Username ?? "superadmin", true, "Panel connection");
             await WriteJsonAsync(context.Response, new PanelLoginDto(ip, location, DateTimeOffset.UtcNow));
         }
         else if (request.HttpMethod == "GET" && path == "/api/v1/overview")
@@ -204,15 +283,21 @@ public sealed class FinesseHttpService : BackgroundService
         }
     }
 
-    private async Task ServeWebSocketAsync(HttpListenerContext context, CancellationToken cancellationToken)
+    private async Task ServeWebSocketAsync(HttpListenerContext context, string? token, string? apiKey, CancellationToken cancellationToken)
     {
-        var socket = (await context.AcceptWebSocketAsync(null)).WebSocket;
+        var protocol = context.Request.Headers["Sec-WebSocket-Protocol"]?.Split(',').Any(value => value.Trim() == "finesse") == true ? "finesse" : null;
+        var socket = (await context.AcceptWebSocketAsync(protocol)).WebSocket;
         var buffer = new byte[256];
         try
         {
             var receive = socket.ReceiveAsync(buffer.AsMemory(), cancellationToken).AsTask();
             while (socket.State == WebSocketState.Open && !cancellationToken.IsCancellationRequested)
             {
+                if (!TryAuthenticate(token, apiKey, out _))
+                {
+                    await socket.CloseOutputAsync(WebSocketCloseStatus.PolicyViolation, "Session expired", cancellationToken);
+                    return;
+                }
                 var payload = JsonSerializer.SerializeToUtf8Bytes(new { type = "snapshot", data = _snapshots.GetSnapshot() }, JsonDefaults.Options);
                 await socket.SendAsync(payload, WebSocketMessageType.Text, true, cancellationToken);
                 var tick = Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
@@ -241,12 +326,52 @@ public sealed class FinesseHttpService : BackgroundService
         }
     }
 
-    private bool IsAuthorized(string? candidate)
+    private bool TryAuthenticate(string? bearer, string? apiKey, out AuthUser? user)
+    {
+        if (!string.IsNullOrEmpty(bearer))
+        {
+            user = _authentication.Authenticate(bearer);
+            return user is not null;
+        }
+
+        if (!IsApiKey(apiKey))
+        {
+            user = null;
+            return false;
+        }
+        user = new AuthUser("superadmin", "superadmin", "superadmin", null);
+        return true;
+    }
+
+    private bool IsApiKey(string? candidate)
     {
         if (string.IsNullOrEmpty(candidate)) return false;
         var expectedHash = SHA256.HashData(Encoding.UTF8.GetBytes(_options.ApiKey));
         var candidateHash = SHA256.HashData(Encoding.UTF8.GetBytes(candidate));
         return CryptographicOperations.FixedTimeEquals(expectedHash, candidateHash);
+    }
+
+    private static void RequireSuperAdmin(AuthUser? user)
+    {
+        if (user?.Role != "superadmin") throw new ManagementException(403, "superAdminRequired");
+    }
+
+    private static async Task<T> ReadJsonAsync<T>(HttpListenerRequest request, int maxBytes, CancellationToken cancellationToken)
+    {
+        if (request.ContentLength64 > maxBytes) throw new ManagementException(413, "requestTooLarge");
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        deadline.CancelAfter(TimeSpan.FromSeconds(10));
+        using var stream = new MemoryStream();
+        var buffer = new byte[8192];
+        while (true)
+        {
+            var read = await request.InputStream.ReadAsync(buffer.AsMemory(), deadline.Token);
+            if (read == 0) break;
+            if (stream.Length + read > maxBytes) throw new ManagementException(413, "requestTooLarge");
+            await stream.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
+        }
+        return JsonSerializer.Deserialize<T>(stream.ToArray(), JsonDefaults.Options)
+            ?? throw new JsonException("Request body is empty.");
     }
 
     private static bool IsLocalAddress(IPAddress? address)
@@ -267,6 +392,9 @@ public sealed class FinesseHttpService : BackgroundService
 
     private static IPAddress? ResolveClientAddress(HttpListenerRequest request)
     {
+        var remote = NormalizeIp(request.RemoteEndPoint?.Address);
+        // Forwarding headers are accepted only from a reverse proxy on this host.
+        if (remote is null || !IPAddress.IsLoopback(remote)) return remote;
         var realIp = request.Headers["X-Real-IP"];
         if (TryNormalizeIp(realIp, out var address)) return address;
 
@@ -274,7 +402,7 @@ public sealed class FinesseHttpService : BackgroundService
         if (!string.IsNullOrWhiteSpace(forwardedFor) && TryNormalizeIp(forwardedFor.Split(',')[0].Trim(), out address))
             return address;
 
-        return NormalizeIp(request.RemoteEndPoint?.Address);
+        return remote;
     }
 
     private static bool TryNormalizeIp(string? value, out IPAddress? address)
@@ -314,8 +442,8 @@ public sealed class FinesseHttpService : BackgroundService
         {
             context.Response.Headers["Access-Control-Allow-Origin"] = origin;
             context.Response.Headers["Vary"] = "Origin";
-            context.Response.Headers["Access-Control-Allow-Headers"] = "X-Api-Key, Content-Type";
-            context.Response.Headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS";
+            context.Response.Headers["Access-Control-Allow-Headers"] = "X-Api-Key, Authorization, Content-Type";
+            context.Response.Headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS";
         }
     }
 
@@ -333,4 +461,8 @@ public sealed class FinesseHttpService : BackgroundService
         response.StatusCode = (int)status;
         return WriteJsonAsync(response, new { error = message });
     }
+
+    private sealed record LoginRequest(string? ApiKey, string? Username, string? Password, string? CaptchaId, string? CaptchaAnswer);
+    private sealed record CreateUserRequest(string? Username, string? Password, string? Avatar);
+    private sealed record AvatarRequest(string? Avatar);
 }

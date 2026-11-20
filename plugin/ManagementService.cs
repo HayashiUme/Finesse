@@ -22,10 +22,10 @@ public sealed class ManagementService(IGameManager games, IClientManager clients
 
     public AuditEntry[] GetAudit() => _audit.Reverse().ToArray();
 
-    public void RecordPanelLogin(string ip, string? location)
+    public void RecordPanelLogin(string ip, string? location, string username, bool success, string detail)
     {
-        AddAudit(new(DateTimeOffset.UtcNow, "login", ip, true, "Panel login", location));
-        logger.LogInformation("Finesse panel login from {Ip} ({Location})", ip, location ?? "location unavailable");
+        AddAudit(new(DateTimeOffset.UtcNow, "login", $"{username} · {ip}", success, detail, location));
+        logger.LogInformation("Finesse panel login for {Username} from {Ip} ({Location}), success={Success}", username, ip, location ?? "location unavailable", success);
     }
 
     public async Task ExecuteCommandAsync(string action, string target, bool? isPublic, CancellationToken cancellationToken)

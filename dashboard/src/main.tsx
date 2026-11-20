@@ -5,6 +5,7 @@ import App from './App'
 import './themes.css'
 import './styles.css'
 import './servers.css'
+import './accounts.css'
 import './i18n'
 
 const queryClient = new QueryClient({
