@@ -7,6 +7,7 @@ import { loadServerRegistry, removeServer, saveServerRegistry, upsertServer } fr
 import { errorMessage } from './i18n'
 import { ConnectionFields, Modal, ServerSetup } from './ConnectionUI'
 import ServersPage from './ServersPage'
+import SettingsPage from './SettingsPage'
 import ServerWorkspace from './ServerWorkspace'
 import type { Connection, SavedServer, ServerRegistry, WorkspaceView } from './types'
 
@@ -16,7 +17,7 @@ export default function App() {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [registry, setRegistry] = useState(loadServerRegistry)
-  const [view, setView] = useState<WorkspaceView | 'servers'>(registry.activeServerId ? 'overview' : 'servers')
+  const [view, setView] = useState<WorkspaceView | 'settings' | 'servers'>(registry.activeServerId ? 'dashboard' : 'servers')
   const [editor, setEditor] = useState<{ id?: string; value: Connection } | null>(null)
   const [removing, setRemoving] = useState<SavedServer | null>(null)
   const [error, setError] = useState<Error | null>(null)
@@ -29,7 +30,7 @@ export default function App() {
   function persist(next: ServerRegistry) { saveServerRegistry(next); setRegistry(next) }
 
   function select(server: SavedServer) {
-    try { persist({ ...registry, activeServerId: server.id }); setView('overview'); setError(null) }
+    try { persist({ ...registry, activeServerId: server.id }); setView('dashboard'); setError(null) }
     catch (failure) { setError(failure instanceof Error ? failure : new Error(String(failure))) }
   }
 
@@ -48,7 +49,7 @@ export default function App() {
         queryClient.removeQueries({ predicate: query => (query.queryKey[1] as SavedServer | undefined)?.id === id })
       }
       if (snapshot) queryClient.setQueryData(['snapshot', server], snapshot)
-      setEditor(null); setView(verify ? 'overview' : 'servers')
+      setEditor(null); setView(verify ? 'dashboard' : 'servers')
     } catch (failure) { if (!abort.current?.signal.aborted) setError(failure instanceof Error ? failure : new Error(String(failure))) }
     finally { saving.current = false; setBusy(false) }
   }
@@ -64,7 +65,7 @@ export default function App() {
 
   const shell = {
     servers: registry.servers, current, view, onSelect: select,
-    onNavigate: (next: WorkspaceView) => setView(next), onDirectory: () => setView('servers'),
+    onNavigate: (next: WorkspaceView) => setView(next), onSettings: () => setView('settings'), onDirectory: () => setView('servers'),
     onAdd: () => { setError(null); setEditor({ value: emptyConnection }) },
     onEdit: (server: SavedServer) => { setError(null); setEditor({ id: server.id, value: server }) },
   }
@@ -73,7 +74,9 @@ export default function App() {
 
   return <>{view === 'servers' || !current
     ? <ServersPage {...shell} onRemove={server => { setError(null); setRemoving(server) }} />
-    : <ServerWorkspace {...shell} key={JSON.stringify(current)} connection={current} view={view} />}
+    : view === 'settings'
+      ? <SettingsPage {...shell} />
+      : <ServerWorkspace {...shell} key={JSON.stringify(current)} connection={current} view={view} />}
     {editor && <Modal title={t(editor.id ? 'editServer' : 'addServer')} onClose={() => { if (!busy) { setEditor(null); setError(null) } }}><form onSubmit={event => { event.preventDefault(); void save(editor.value, true, editor.id) }}><p className="modal-copy">{t('serverEditorDescription')}</p><fieldset disabled={busy}><ConnectionFields value={editor.value} onChange={value => setEditor({ ...editor, value })} /></fieldset><div className="security-note"><LockKeyhole size={15} /><span>{t('localStorageNote')}</span></div>{error && <div className="setup-error" role="alert">{errorMessage(error)}</div>}<div className="modal-actions"><button type="button" className="secondary-btn" disabled={busy} onClick={() => void save(editor.value, false, editor.id)}>{t('saveForLater')}</button><button className="primary-btn" disabled={busy}>{busy ? <LoaderCircle className="spin" size={15} /> : <Wifi size={15} />}{t(busy ? 'testingConnection' : 'testAndSave')}</button></div></form></Modal>}
     {removing && <Modal title={t('removeNamedServer', { name: removing.name })} onClose={() => { setRemoving(null); setError(null) }}><p className="modal-copy">{t('removeServerNote')}</p><code className="removing-address">{removing.baseUrl}</code>{error && <div className="setup-error" role="alert">{errorMessage(error)}</div>}<div className="modal-actions"><button className="secondary-btn" onClick={() => setRemoving(null)}>{t('cancel')}</button><button className="danger-btn" onClick={() => void forget(removing)}>{t('removeConnection')}</button></div></Modal>}
     {error && !editor && !removing && <div className="toast" role="alert"><span>{errorMessage(error)}</span><button className="icon-btn" aria-label={t('dismiss')} onClick={() => setError(null)}><X size={15} /></button></div>}

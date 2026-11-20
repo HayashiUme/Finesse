@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { Activity, ArrowDownToLine, Ban, ClipboardList, Gamepad2, Globe2, LoaderCircle, LockKeyhole, LogOut, RefreshCw, Search, Settings2, ShieldCheck, Users, WifiOff, X } from 'lucide-react'
+import { Activity, ArrowDownToLine, ArrowUpRight, Ban, ClipboardList, Gamepad2, Globe2, LoaderCircle, LockKeyhole, LogOut, RefreshCw, Search, Server, Settings2, ShieldCheck, Users, WifiOff, X } from 'lucide-react'
 import { fetchAudit, fetchSnapshot, gameAction, playerAction } from './api'
 import { useRealtime } from './useRealtime'
 import { errorMessage, LocalizedError, type TranslationKey } from './i18n'
@@ -9,7 +9,7 @@ import AppShell, { type WorkspaceProps } from './AppShell'
 import { Modal } from './ConnectionUI'
 import type { Game, Player } from './types'
 
-const titles = { overview: 'titleOverview', players: 'titlePlayers', games: 'titleGames', audit: 'navAudit' } as const
+const titles = { dashboard: 'navDashboard', players: 'titlePlayers', games: 'titleGames', audit: 'navAudit' } as const
 const filters = [{ id: 'all', label: 'filterAll' }, { id: 'lobby', label: 'lobby' }, { id: 'playing', label: 'playing' }] as const
 type Filter = typeof filters[number]['id']
 const gameStates: Record<string, Extract<TranslationKey, `state${string}`>> = { NotStarted: 'stateWaiting', Starting: 'stateStarting', Started: 'stateStarted', Ended: 'stateEnded', Destroyed: 'stateDestroyed' }
@@ -33,7 +33,7 @@ export default function ServerWorkspace({ connection, view, ...shell }: Workspac
   })
   const connected = Boolean(connection && query.isSuccess)
   const live = useRealtime(connection, connected)
-  const audit = useQuery({ queryKey: ['audit', connection], queryFn: ({ signal }) => fetchAudit(connection, signal), enabled: connected && view === 'audit', retry: false, refetchInterval: 15000 })
+  const audit = useQuery({ queryKey: ['audit', connection], queryFn: ({ signal }) => fetchAudit(connection, signal), enabled: connected && (view === 'audit' || view === 'dashboard'), retry: false, refetchInterval: 15000 })
   const players = query.data?.players ?? []
   const games = query.data?.games ?? []
   const selectedGame = games.find(g => g.code === selectedCode)
@@ -91,16 +91,18 @@ export default function ServerWorkspace({ connection, view, ...shell }: Workspac
   const data = query.data
   return <AppShell {...shell} current={connection} view={view} live={live} connected onRefresh={() => { void query.refetch(); if (view === 'audit') void audit.refetch() }}>
 
-        <div className="page-heading"><div><div className="eyebrow"><span className="pulse-mini" />{t('serverManagement')}</div><h1>{t(titles[view])}</h1><p>{t(live ? 'liveDescription' : 'pollingDescription')}</p></div><div className="heading-actions"><button className="primary-btn" onClick={() => shell.onEdit(connection)}><Settings2 size={16} />{t('settings')}</button></div></div>
+        <div className="page-heading"><div><div className="eyebrow"><span className="pulse-mini" />{t('serverManagement')}</div><h1>{t(titles[view])}</h1><p>{t(view === 'dashboard' ? (live ? 'liveDescription' : 'pollingDescription') : view === 'players' ? 'managePlayers' : view === 'games' ? 'manageGames' : 'auditDescription')}</p></div><div className="heading-actions">{view === 'dashboard' && <button className="secondary-btn" onClick={() => shell.onEdit(connection)}><Settings2 size={16} />{t('connectionSettings')}</button>}</div></div>
 
-        {(view === 'overview' || view === 'players') && <section className="stats-grid">
+        {view === 'dashboard' && <DashboardHome data={data} audit={audit.data ?? []} auditLoading={audit.isPending} auditError={audit.isError} formatUptime={formatUptime} number={number} onPlayers={() => shell.onNavigate('players')} onGames={() => shell.onNavigate('games')} onAudit={() => shell.onNavigate('audit')} onRoom={setSelectedCode} />}
+
+        {view === 'players' && <section className="stats-grid">
           <StatCard label={t('onlinePlayers')} value={number(data.onlinePlayers)} detail={t('allConnections')} icon={<Users size={18} />} accent="mint" />
           <StatCard label={t('activeGames')} value={number(data.activeGames)} detail={t('totalGames', { count: data.totalGames })} icon={<Gamepad2 size={18} />} accent="lilac" />
           <StatCard label={t('uptime')} value={formatUptime(data.uptimeSeconds)} detail={t('uptimeDescription')} icon={<Activity size={18} />} accent="amber" compact />
           <StatCard label={t('pluginVersion')} value={`v${data.pluginVersion}`} detail={t('apiVersion')} icon={<ShieldCheck size={18} />} accent="blue" compact />
         </section>}
 
-        {(view === 'overview' || view === 'players') && <section className="section-block">
+        {view === 'players' && <section className="section-block">
           <div className="section-head"><div><div className="section-title"><h2>{t('navPlayers')}</h2><span className="count-tag">{number(players.length)}</span></div><p>{t('managePlayers')}</p></div><div className="table-tools"><label className="search-box"><Search size={15} /><input aria-label={t('searchPlayers')} value={search} onChange={e => setSearch(e.target.value)} placeholder={t('searchPlayersPlaceholder')} /></label><button className="tool-btn" title={t('exportPlayers')} aria-label={t('exportPlayers')} onClick={exportPlayers}><ArrowDownToLine size={16} /></button></div></div>
           <div className="table-wrap"><table><thead><tr><th>{t('player')}</th><th>{t('status')}</th><th>{t('room')}</th><th>{t('role')}</th><th className="actions-col">{t('actions')}</th></tr></thead><tbody>{filteredPlayers.map(player => <tr key={player.clientId}>
             <td><div className="player-cell"><div className={`player-avatar hue-${player.clientId % 5}`}>{player.name.slice(0, 1).toUpperCase()}</div><div><b>{player.name}</b><small>{t('clientId', { id: player.clientId })}</small></div></div></td>
@@ -112,7 +114,7 @@ export default function ServerWorkspace({ connection, view, ...shell }: Workspac
           <div className="table-footer"><span>{t('playerFooter', { count: filteredPlayers.length })}</span><button onClick={() => query.refetch()}><RefreshCw size={13} />{t('refreshList')}</button></div>
         </section>}
 
-        {(view === 'overview' || view === 'games') && <section className="section-block games-block">
+        {view === 'games' && <section className="section-block games-block">
           <div className="section-head"><div><div className="section-title"><h2>{t('titleGames')}</h2><span className="count-tag">{number(games.length)}</span></div><p>{t('manageGames')}</p></div><div className="table-tools">{view === 'games' && <label className="search-box"><Search size={15} /><input aria-label={t('searchGames')} value={search} onChange={e => setSearch(e.target.value)} placeholder={t('searchGamesPlaceholder')} /></label>}<div className="segmented">{filters.map(item => <button key={item.id} className={filter === item.id ? 'selected' : ''} aria-pressed={filter === item.id} onClick={() => setFilter(item.id)}>{t(item.label)}</button>)}</div></div></div>
           <div className="games-grid">{filteredGames.map(game => <GameTile key={game.code} game={game} onSelect={() => setSelectedCode(game.code)} />)}</div>
           {filteredGames.length === 0 && <div className="empty-state"><Gamepad2 size={24} /><span>{t('noGames')}</span></div>}
@@ -123,6 +125,40 @@ export default function ServerWorkspace({ connection, view, ...shell }: Workspac
     {selectedCode && <Modal title={t('roomTitle', { code: selectedCode })} onClose={() => setSelectedCode(null)}>{selectedGame ? <><div className="room-detail"><span>{gameStates[selectedGame.state] ? t(gameStates[selectedGame.state]) : selectedGame.state}</span><span>{t('roomPlayers', { count: selectedGame.playerCount, max: selectedGame.maxPlayers })}</span><span>{t(selectedGame.isPublic ? 'publicRoom' : 'privateRoom')}</span></div><div className="room-player-list">{selectedGame.players.map(p => <div key={p.clientId}><b>{p.name}</b><span>{p.isHost ? t('host') : `#${p.clientId}`}</span><button className="secondary-btn" disabled={pending} onClick={() => moderate(p, 'kick')}>{t('kick')}</button></div>)}</div><div className="modal-actions"><button className="secondary-btn" disabled={pending} onClick={() => manageGame(selectedGame, 'privacy')}>{t(selectedGame.isPublic ? 'makePrivate' : 'makePublic')}</button><button className="danger-btn" disabled={pending} onClick={() => manageGame(selectedGame, 'close')}>{t('clearRoom')}</button></div><p className="modal-copy">{t('clearRoomNote')}</p></> : <div className="empty-state">{t('roomOffline')}</div>}</Modal>}
     {notice && <div className="toast" role="status"><span>{errorMessage(notice)}</span><button className="icon-btn" title={t('dismiss')} aria-label={t('dismiss')} onClick={() => setNotice(null)}><X size={15} /></button></div>}
   </AppShell>
+}
+
+function DashboardHome({ data, audit, auditLoading, auditError, formatUptime, number, onPlayers, onGames, onAudit, onRoom }: {
+  data: { onlinePlayers: number; activeGames: number; totalGames: number; uptimeSeconds: number; pluginVersion: string; players: Player[]; games: Game[] }
+  audit: Awaited<ReturnType<typeof fetchAudit>>; auditLoading: boolean; auditError: boolean
+  formatUptime: (seconds: number) => string; number: (value: number) => string
+  onPlayers: () => void; onGames: () => void; onAudit: () => void; onRoom: (code: string) => void
+}) {
+  const { t, i18n } = useTranslation()
+  const activePlayers = data.players.filter(player => player.inGame).length
+  const lobbyPlayers = data.onlinePlayers - activePlayers
+  const visibleGames = data.games.slice(0, 5)
+  return <div className="dashboard-home">
+    <section className="dashboard-server-strip"><div className="dashboard-server-status"><span className="server-dot" /><div><b>{t('serverOnline')}</b><small>{t('pluginFooter', { version: data.pluginVersion })}</small></div></div><div className="dashboard-runtime"><span>{t('uptime')}</span><b>{formatUptime(data.uptimeSeconds)}</b></div><div className="dashboard-link-status"><span className="pulse-mini" />{t('liveDescription')}</div></section>
+    <section className="dashboard-metrics" aria-label={t('dashboardMetrics')}>
+      <button className="dashboard-metric accent-mint" onClick={onPlayers}><span className="dashboard-metric-icon"><Users size={18} /></span><b>{number(data.onlinePlayers)}</b><strong>{t('onlinePlayers')}</strong><small>{t('dashboardPlayerSplit', { lobby: number(lobbyPlayers), playing: number(activePlayers) })}</small></button>
+      <button className="dashboard-metric accent-lilac" onClick={onGames}><span className="dashboard-metric-icon"><Gamepad2 size={18} /></span><b>{number(data.activeGames)}</b><strong>{t('activeGames')}</strong><small>{t('dashboardRoomsTotal', { count: data.totalGames })}</small></button>
+      <button className="dashboard-metric accent-amber" onClick={onGames}><span className="dashboard-metric-icon"><Server size={18} /></span><b>{number(data.totalGames)}</b><strong>{t('titleGames')}</strong><small>{t('dashboardRoomsHint')}</small></button>
+      <div className="dashboard-metric accent-blue"><span className="dashboard-metric-icon"><Activity size={18} /></span><b className="runtime-value">{formatUptime(data.uptimeSeconds)}</b><strong>{t('uptime')}</strong><small>{t('uptimeDescription')}</small></div>
+    </section>
+    <div className="dashboard-columns">
+      <section className="dashboard-panel"><div className="dashboard-panel-head"><div><h2>{t('liveRooms')}</h2><p>{t('dashboardRoomsDescription')}</p></div><button className="text-action" onClick={onGames}>{t('viewAll')}<ArrowUpRight size={14} /></button></div>
+        {visibleGames.length ? <div className="dashboard-room-list">{visibleGames.map(game => {
+          const ratio = Math.min(100, Math.max(0, game.playerCount / Math.max(1, game.maxPlayers) * 100))
+          const running = game.state === 'Started'
+          return <button className="dashboard-room" key={game.code} onClick={() => onRoom(game.code)}><span className={`dashboard-room-icon ${running ? 'running' : ''}`}><Gamepad2 size={17} /></span><span className="dashboard-room-main"><b>{game.code}</b><small>{game.hostName ?? t('unknown')} · {t(running ? 'stateStarted' : 'stateWaiting')}</small><span className="room-capacity"><i style={{ width: `${ratio}%` }} /></span></span><span className="dashboard-room-count">{number(game.playerCount)}<small> / {number(game.maxPlayers)}</small></span></button>
+        })}</div> : <div className="dashboard-empty"><Gamepad2 size={20} /><span>{t('noGames')}</span></div>}
+      </section>
+      <section className="dashboard-panel"><div className="dashboard-panel-head"><div><h2>{t('recentActions')}</h2><p>{t('dashboardActivityDescription')}</p></div><button className="text-action" onClick={onAudit}>{t('viewAll')}<ArrowUpRight size={14} /></button></div>
+        {auditError ? <div className="dashboard-empty">{t('activityUnavailable')}</div> : auditLoading ? <div className="dashboard-empty">{t('loadingAudit')}</div> : audit.length ? <div className="dashboard-activity-list">{audit.slice(0, 5).map((entry, index) => <div className="dashboard-activity" key={`${entry.timestamp}-${index}`}><span className={`activity-result ${entry.success ? 'success' : 'failure'}`} /><div><b>{actionNames[entry.action] ? t(actionNames[entry.action]) : entry.action}</b><small>{entry.target}</small></div><time dateTime={entry.timestamp}>{new Date(entry.timestamp).toLocaleTimeString(i18n.resolvedLanguage, { hour: '2-digit', minute: '2-digit' })}</time></div>)}</div> : <div className="dashboard-empty"><ClipboardList size={20} /><span>{t('noAudit')}</span></div>}
+      </section>
+    </div>
+    <footer className="page-footer"><span><LockKeyhole size={13} /> API v1 <span className="footer-sep">·</span> {t('pluginFooter', { version: data.pluginVersion })}</span><span>{t('footerBrand')}</span></footer>
+  </div>
 }
 
 function StatCard({ label, value, detail, icon, accent, compact = false }: { label: string; value: string | number; detail: string; icon: React.ReactNode; accent: string; compact?: boolean }) {
