@@ -1,5 +1,7 @@
 # Finesse Guide
 
+See [Management features](management.md) for metrics, reports, server bans, broadcasts, player details and the Empostor feature mapping.
+
 ## Multiple Servers
 
 - Open **Servers** in the sidebar to add, search, edit, or remove connections. Each server has its own name, plugin address, and login session.

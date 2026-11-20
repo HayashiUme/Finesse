@@ -1,0 +1,29 @@
+.management-stack { display: grid; gap: 22px; }
+.management-stack h2,.messages-panel h2,.system-panel h2 { display: flex; align-items: center; gap: 8px; }
+.management-stack h2>svg,.messages-panel h2>svg,.system-panel h2>svg { color: var(--green-text); }
+.management-search { padding: 0 20px 16px; }
+.bans-panel td { max-width: 230px; overflow-wrap: anywhere; font-size: 11px; }
+.management-form fieldset { border: 0; padding: 0; margin: 0; display: grid; gap: 14px; }
+.management-form label,.message-destination { display: grid; gap: 8px; color: var(--text-secondary); font-size: 12px; margin: 14px 0; }
+.management-form input,.management-form select,.management-form textarea,.message-destination select { width: 100%; min-width: 0; padding: 11px 12px; color: var(--ink); background: var(--surface-soft); border: 1px solid var(--line); border-radius: 8px; font: inherit; }
+.management-form textarea { resize: vertical; min-height: 110px; line-height: 1.8; }
+.management-form input:focus-visible,.management-form textarea:focus-visible,.management-form select:focus-visible,.message-destination select:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.management-form label>small { color: var(--muted); font-size: 11px; line-height: 1.6; }
+.management-form .danger-btn,.player-details~.danger-btn { min-height: 36px; display: inline-flex; align-items: center; gap: 7px; }
+.composer-footer { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+.composer-footer small { color: var(--muted); font-size: 11px; }
+.management-form .report-warning { border-radius: 8px; }
+.command-result { padding: 12px; background: var(--surface-selected); color: var(--green-text); border-radius: 8px; font-size: 12px; }
+.management-body { padding: 0 24px 18px; }
+.messages-panel { max-width: 900px; }
+.system-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 0 28px; padding: 0 24px 16px; margin: 0; }
+.system-grid>div { padding: 19px 0; border-bottom: 1px solid var(--line-soft); min-width: 0; }
+.system-grid dt { color: var(--muted); font-size: 11px; margin-bottom: 9px; }
+.system-grid dd { color: var(--ink); margin: 0; font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+.player-details { padding: 0 0 12px; gap: 0 16px; }
+.player-info-button { border: 0; color: var(--ink); background: transparent; padding: 0; font-weight: 600; text-align: left; }
+.player-info-button:hover { color: var(--green-text); text-decoration: underline; }
+.room-message { margin-top: 18px; border-top: 1px solid var(--line-soft); padding-top: 4px; }
+.room-message h3 { color: var(--text-secondary); font-size: 12px; }
+.sidebar { overflow-y: auto; }
+@media(max-width:700px) { .system-grid { grid-template-columns: minmax(0,1fr); } .management-body { padding: 0 16px 16px; } .bans-panel .dashboard-panel-head { flex-wrap: wrap; } .management-search .search-box { width: 100%; } }

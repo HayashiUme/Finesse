@@ -37,7 +37,7 @@ export function Modal({ title, children, onClose }: { title: string; children: R
   return <div className="modal-backdrop" onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}><section ref={panel} tabIndex={-1} className="settings-modal" role="dialog" aria-modal="true" aria-label={title} onKeyDown={e => {
     if (e.key === 'Escape') onClose()
     if (e.key === 'Tab') {
-      const nodes = Array.from(panel.current?.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled), [href]') ?? []).filter(node => !node.closest('fieldset:disabled'))
+      const nodes = Array.from(panel.current?.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [href]') ?? []).filter(node => !node.closest('fieldset:disabled'))
       const first = nodes[0], last = nodes[nodes.length - 1]
       if (e.shiftKey && (document.activeElement === first || document.activeElement === panel.current)) { e.preventDefault(); last?.focus() }
       else if (!e.shiftKey && (document.activeElement === last || document.activeElement === panel.current)) { e.preventDefault(); first?.focus() }

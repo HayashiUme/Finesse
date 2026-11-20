@@ -12,4 +12,8 @@ finesse.json
 finesse.json.*.tmp
 finesse-users.json
 finesse-users.json.*.tmp
+finesse-reports.json
+finesse-reports.json.tmp
+finesse-bans.json
+finesse-bans.json.tmp
 tests/

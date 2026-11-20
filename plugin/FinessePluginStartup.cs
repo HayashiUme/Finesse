@@ -15,6 +15,10 @@ public sealed class FinessePluginStartup : IPluginStartup
         services.AddSingleton(FinesseOptions.Load());
         services.AddSingleton<AuthenticationService>();
         services.AddSingleton<SnapshotService>();
+        services.AddSingleton<ProcessMetricsService>();
+        services.AddSingleton<ReportService>();
+        services.AddSingleton<BanService>();
+        services.AddHostedService(provider => provider.GetRequiredService<ReportService>());
         services.AddSingleton<ManagementService>();
         services.AddHostedService(provider => provider.GetRequiredService<ManagementService>());
         services.AddHostedService<FinesseHttpService>();

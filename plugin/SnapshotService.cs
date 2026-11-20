@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using System.Reflection;
+using System.Runtime.InteropServices;
 using Impostor.Api.Games;
 using Impostor.Api.Games.Managers;
 using Impostor.Api.Innersloth;
@@ -10,23 +12,25 @@ public sealed class SnapshotService
 {
     private readonly IGameManager _gameManager;
     private readonly IClientManager _clientManager;
+    private readonly ProcessMetricsService _metrics;
     private readonly Stopwatch _uptime = Stopwatch.StartNew();
 
-    public SnapshotService(IGameManager gameManager, IClientManager clientManager)
+    public SnapshotService(IGameManager gameManager, IClientManager clientManager, ProcessMetricsService metrics)
     {
         _gameManager = gameManager;
         _clientManager = clientManager;
+        _metrics = metrics;
     }
 
     public SnapshotDto GetSnapshot()
     {
         var games = _gameManager.Games.Select(ToGame).ToArray();
         var players = _clientManager.Clients
-            .Select(client => client.Player is { } player ? ToPlayer(player) : new PlayerDto(client.Id, client.Name, null, false, false))
+            .Select(ToClient)
             .ToArray();
         var activeGames = games.Count(game => game.State == nameof(GameStates.Started));
 
-        return new SnapshotDto("online", (long)_uptime.Elapsed.TotalSeconds, players.Length, activeGames, games.Length, "0.1.0", games, players);
+        return new SnapshotDto("online", (long)_uptime.Elapsed.TotalSeconds, players.Length, activeGames, games.Length, "0.1.0", games, players, _metrics.GetMetrics());
     }
 
     private static GameDto ToGame(IGame game)
@@ -39,7 +43,7 @@ public sealed class SnapshotService
             game.Options.MaxPlayers,
             game.IsPublic,
             game.Host?.Client.Name,
-            players);
+            players, game.Options.Map.ToString(), game.Options.GameMode.ToString(), game.DisplayName);
     }
 
     private static PlayerDto ToPlayer(Impostor.Api.Net.IClientPlayer player)
@@ -50,6 +54,22 @@ public sealed class SnapshotService
             state?.PlayerName ?? player.Client.Name,
             player.Game.Code.Code,
             player.IsHost,
-            player.Game.GameState == GameStates.Started);
+            player.Game.GameState == GameStates.Started, Address(player.Client), player.Client.FriendCode,
+            player.Client.GameVersion.ToString(), player.Client.PlatformSpecificData?.Platform.ToString(), player.Client.Language.ToString());
     }
+
+    private static string? Address(Impostor.Api.Net.IClient client)
+    {
+        var ip = client.Connection?.EndPoint?.Address;
+        return ip?.IsIPv4MappedToIPv6 == true ? ip.MapToIPv4().ToString() : ip?.ToString();
+    }
+
+    private static PlayerDto ToClient(Impostor.Api.Net.IClient client) => client.Player is { } player ? ToPlayer(player) :
+        new(client.Id, client.Name, null, false, false, Address(client), client.FriendCode, client.GameVersion.ToString(),
+            client.PlatformSpecificData?.Platform.ToString(), client.Language.ToString());
+
+    public ServerInfoDto GetServerInfo() => new(RuntimeInformation.FrameworkDescription, RuntimeInformation.OSDescription,
+        RuntimeInformation.ProcessArchitecture.ToString(), Environment.ProcessId, Environment.ProcessorCount,
+        Assembly.GetEntryAssembly()?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion,
+        typeof(IGame).Assembly.GetName().Version?.ToString() ?? "unknown");
 }

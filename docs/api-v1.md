@@ -61,7 +61,7 @@
 
 房间字段：`code:string`、`state:string`、`playerCount:number`、`maxPlayers:number`、`isPublic:boolean`、`hostName:string|null`、`players:Player[]`。状态沿用 Impostor GameStates 名称，例如 `NotStarted`、`Starting`、`Started`、`Ended`、`Destroyed`。
 
-审计字段：`timestamp`（UTC ISO 时间）、`action`（login/kick/ban/privacy/close）、`target`（用户名及 IP、客户端 ID 或房间码）、`success:boolean`、`detail:string`。登录成功与失败均记录；刷新页面仅恢复会话，不新增登录记录。记录同时写服务器日志，内存记录在重启后清空。
+审计字段：`timestamp`（UTC ISO 时间）、`action`（login/kick/ban/privacy/close/serverBan/unban/broadcast/message）、`target`（用户名及 IP、客户端 ID、封禁目标或房间码）、`success:boolean`、`detail:string`。登录成功与失败均记录；刷新页面仅恢复会话，不新增登录记录。记录同时写服务器日志，内存记录在重启后清空。消息正文不写入操作记录。
 
 WebSocket 消息：
 
@@ -100,4 +100,8 @@ WebSocket 消息：
 | 500 | 内部错误，详情写服务器日志 |
 | 503 | 管理队列已满或正在关闭 |
 
-本版使用单个管理密钥，无账号角色、持久化审计和限流。数据源可能在多个查询之间变化，快照不提供跨玩家与房间的事务一致性保证。
+本版支持超级管理员及普通管理员、登录失败限制和会话撤销。操作记录不单独持久化；账户、封禁和举报分别保存。数据源可能在多个查询之间变化，快照不提供跨玩家与房间的事务一致性保证。
+
+## 新增管理接口
+
+进程指标、举报、服务器封禁、消息广播及服务器信息接口见 [management.md](management.md)。原有踢出、房间封禁、可见性和清空房间接口继续返回 204。

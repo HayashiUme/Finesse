@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Check, ChevronDown, ClipboardList, Command, Gamepad2, LayoutDashboard, LogOut, Plus, RefreshCw, Server, Settings2, UserRoundCog, Users } from 'lucide-react'
+import { Check, ChevronDown, ClipboardList, Command, Gamepad2, Info, LayoutDashboard, LogOut, Megaphone, Plus, RefreshCw, Server, Settings2, ShieldCheck, UserRoundCog, Users } from 'lucide-react'
 import { ConfigHelp, Modal } from './ConnectionUI'
 import type { AppView, SavedServer, WorkspaceView } from './types'
 import { useAuth } from './auth'
@@ -16,6 +16,9 @@ const navigation = [
   { id: 'dashboard', label: 'navDashboard', icon: LayoutDashboard },
   { id: 'players', label: 'navPlayers', icon: Users },
   { id: 'games', label: 'navGames', icon: Gamepad2 },
+  { id: 'moderation', label: 'navModeration', icon: ShieldCheck },
+  { id: 'messages', label: 'navMessages', icon: Megaphone },
+  { id: 'system', label: 'navSystem', icon: Info },
   { id: 'audit', label: 'navAudit', icon: ClipboardList },
 ] as const
 

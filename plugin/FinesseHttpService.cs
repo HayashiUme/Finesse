@@ -13,6 +13,7 @@ public sealed class FinesseHttpService : BackgroundService
     private readonly FinesseOptions _options;
     private readonly AuthenticationService _authentication;
     private readonly SnapshotService _snapshots;
+    private readonly ReportService _reports;
     private readonly ManagementService _management;
     private readonly ILogger<FinesseHttpService> _logger;
     private readonly HttpListener _listener = new();
@@ -22,11 +23,13 @@ public sealed class FinesseHttpService : BackgroundService
         AuthenticationService authentication,
         SnapshotService snapshots,
         ManagementService management,
-        ILogger<FinesseHttpService> logger)
+        ILogger<FinesseHttpService> logger,
+        ReportService reports)
     {
         _options = options;
         _authentication = authentication;
         _snapshots = snapshots;
+        _reports = reports;
         _management = management;
         _logger = logger;
         _listener.Prefixes.Add(options.Url);
@@ -225,7 +228,7 @@ public sealed class FinesseHttpService : BackgroundService
         else if (request.HttpMethod == "GET" && path == "/api/v1/overview")
         {
             var snapshot = _snapshots.GetSnapshot();
-            await WriteJsonAsync(context.Response, new OverviewDto(snapshot.Status, snapshot.UptimeSeconds, snapshot.OnlinePlayers, snapshot.ActiveGames, snapshot.TotalGames, snapshot.PluginVersion));
+            await WriteJsonAsync(context.Response, new OverviewDto(snapshot.Status, snapshot.UptimeSeconds, snapshot.OnlinePlayers, snapshot.ActiveGames, snapshot.TotalGames, snapshot.PluginVersion, snapshot.Process));
         }
         else if (request.HttpMethod == "GET" && path == "/api/v1/games")
         {
@@ -235,9 +238,39 @@ public sealed class FinesseHttpService : BackgroundService
         {
             await WriteJsonAsync(context.Response, _snapshots.GetSnapshot().Players);
         }
+        else if (request.HttpMethod == "GET" && path == "/api/v1/reports")
+        {
+            await WriteJsonAsync(context.Response, _reports.GetRecent());
+        }
+        else if (request.HttpMethod == "GET" && path == "/api/v1/server")
+        {
+            await WriteJsonAsync(context.Response, _snapshots.GetServerInfo());
+        }
+        else if (request.HttpMethod == "GET" && path == "/api/v1/bans")
+        {
+            await WriteJsonAsync(context.Response, _management.GetBans());
+        }
+        else if (request.HttpMethod == "POST" && path == "/api/v1/bans")
+        {
+            var body = await ReadJsonAsync<BanRequest>(request, 4096, cancellationToken);
+            // Normalize before queueing so malformed targets never reach the audit log.
+            var target = BanService.Normalize(body.Kind, body.Value);
+            await WriteJsonAsync(context.Response, await _management.ExecuteAsync("serverBan", body.Kind + ":" + target, null, null, body, cancellationToken));
+        }
         else if (request.HttpMethod == "GET" && path == "/api/v1/audit")
         {
             await WriteJsonAsync(context.Response, _management.GetAudit());
+        }
+        else if (request.HttpMethod == "DELETE" && path.StartsWith("/api/v1/bans/", StringComparison.Ordinal))
+        {
+            var id = path["/api/v1/bans/".Length..];
+            if (!Guid.TryParseExact(id, "N", out _)) throw new ManagementException(400, "banInvalid");
+            await WriteJsonAsync(context.Response, await _management.ExecuteAsync("unban", id, null, null, null, cancellationToken));
+        }
+        else if (request.HttpMethod == "POST" && path == "/api/v1/broadcast")
+        {
+            var body = await ReadJsonAsync<MessageRequest>(request, 4096, cancellationToken);
+            await WriteJsonAsync(context.Response, await _management.ExecuteAsync("broadcast", "all", null, body.Message, null, cancellationToken));
         }
         else if (request.HttpMethod == "POST" && TryParsePlayerAction(path, out var clientId, out var action))
         {
@@ -247,6 +280,12 @@ public sealed class FinesseHttpService : BackgroundService
         }
         else if (request.HttpMethod == "POST" && TryParseGameAction(path, out var code, out var gameAction))
         {
+            if (gameAction == "message")
+            {
+                var body = await ReadJsonAsync<MessageRequest>(request, 4096, cancellationToken);
+                await WriteJsonAsync(context.Response, await _management.ExecuteAsync("message", code, null, body.Message, null, cancellationToken));
+                return;
+            }
             bool? isPublic = null;
             if (gameAction == "privacy")
             {
@@ -429,7 +468,7 @@ public sealed class FinesseHttpService : BackgroundService
     {
         code = action = string.Empty;
         var segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
-        if (segments.Length != 5 || segments[0] != "api" || segments[1] != "v1" || segments[2] != "games" || segments[4] is not ("privacy" or "close")) return false;
+        if (segments.Length != 5 || segments[0] != "api" || segments[1] != "v1" || segments[2] != "games" || segments[4] is not ("privacy" or "close" or "message")) return false;
         code = segments[3];
         action = segments[4];
         return true;

@@ -1,5 +1,5 @@
 import { LocalizedError } from './i18n'
-import type { AuditEntry, Connection, Snapshot, AuthUser, AuthChallenge, LoginResponse, ManagedUser } from './types'
+import type { AuditEntry, Connection, Snapshot, AuthUser, AuthChallenge, LoginResponse, ManagedUser, ReportFeed, BanFeed, BanRequest, CommandResult, ServerInfo } from './types'
 
 export function normalizeConnection(value: Connection, enforceHttps = true): Connection {
   const name = value.name.trim()
@@ -110,9 +110,11 @@ export async function fetchOverview(connection: Connection, signal?: AbortSignal
 }
 
 export const fetchAudit = (connection: Connection, signal?: AbortSignal) => getJson<AuditEntry[]>(connection, '/api/v1/audit', signal)
+export const fetchReports = (connection: Connection, signal?: AbortSignal) => getJson<ReportFeed>(connection, '/api/v1/reports', signal)
 
 
 const authErrorKeys = {
+  banInvalid: 'banInvalid', banLimit: 'banLimit', banStoreUnavailable: 'banStoreUnavailable', messageInvalid: 'messageInvalid',
   usernameInvalid: 'usernameInvalid', passwordPolicy: 'passwordPolicy', usernameTaken: 'usernameTaken',
   userLimitReached: 'userLimitReached', avatarInvalid: 'avatarInvalid', accountStoreUnavailable: 'accountStoreUnavailable',
   superAdminRequired: 'superAdminRequired', userNotFound: 'errorNotFound', sessionExpired: 'errorUnauthorized',
@@ -133,3 +135,9 @@ export const deleteUser = (connection: Connection, id: string) => request(connec
 export const updateAvatar = async (connection: Connection, avatar: string | null): Promise<{ user: AuthUser }> => {
   return JSON.parse(await request(connection, '/api/v1/auth/me/avatar', { avatar }, 'PUT'))
 }
+
+export const fetchBans = (connection: Connection, signal?: AbortSignal) => getJson<BanFeed>(connection, '/api/v1/bans', signal)
+export const addBan = async (connection: Connection, ban: BanRequest): Promise<CommandResult> => JSON.parse(await request(connection, '/api/v1/bans', ban, true))
+export const removeBan = (connection: Connection, id: string) => request(connection, '/api/v1/bans/' + encodeURIComponent(id), undefined, 'DELETE')
+export const sendMessage = async (connection: Connection, message: string, code?: string): Promise<CommandResult> => JSON.parse(await request(connection, code ? '/api/v1/games/' + encodeURIComponent(code) + '/message' : '/api/v1/broadcast', { message }, true))
+export const fetchServerInfo = (connection: Connection, signal?: AbortSignal) => getJson<ServerInfo>(connection, '/api/v1/server', signal)
