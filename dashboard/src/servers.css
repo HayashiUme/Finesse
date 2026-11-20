@@ -61,14 +61,39 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .mobile-server-context { display: none; }
 .server-select b { overflow-wrap: anywhere; }
 .nav-caption { margin-top: 18px; }
-.preference-list { border-top: 1px solid var(--line); }
-.preference-row { display: flex; align-items: center; gap: 16px; min-height: 98px; padding: 18px 4px; border-bottom: 1px solid var(--line); }
+.preference-list { overflow: hidden; border: 1px solid var(--line); border-radius: 8px; background: color-mix(in srgb, var(--surface) 86%, transparent); backdrop-filter: blur(17px); -webkit-backdrop-filter: blur(17px); }
+.preference-row { display: flex; align-items: center; gap: 16px; min-height: 98px; padding: 18px 20px; border-bottom: 1px solid var(--line); }
+.preference-row:last-child { border-bottom: 0; }
 .preference-icon { width: 38px; height: 38px; display: grid; place-items: center; flex: none; color: var(--green-text); background: var(--green-bg); border-radius: 7px; }
 .preference-copy { flex: 1; min-width: 0; }
 .preference-copy h2 { font-size: 13px; font-weight: 600; margin: 0 0 5px; }
 .preference-copy p { font-size: 11px; line-height: 1.5; margin: 0; color: var(--muted); }
 .preference-row .theme-switcher,.preference-row .language-switcher { min-width: 146px; justify-content: space-between; padding: 0 10px; }
+.appearance-controls { display: flex; align-items: center; gap: 20px; }
+.accent-setting { display: grid; gap: 7px; color: var(--muted); font-size: 9px; }
+.accent-picker { display: flex; align-items: center; gap: 8px; }
+.accent-swatches { display: flex; align-items: center; gap: 7px; }
+.accent-swatch { width: 24px; height: 24px; display: grid; place-items: center; padding: 0; border: 2px solid transparent; border-radius: 50%; background: var(--swatch); color: white; }
+.accent-swatch.selected { border-color: var(--ink); box-shadow: 0 0 0 2px var(--surface); }
+.accent-swatch:focus-visible,.custom-accent:focus-within { outline: 2px solid var(--focus); outline-offset: 3px; }
+.custom-accent { width: 28px; height: 28px; display: grid; place-items: center; position: relative; border: 1px solid var(--line); border-radius: 50%; background: var(--surface); color: var(--text-secondary); cursor: pointer; }
+.custom-accent input { position: absolute; inset: 0; width: 100%; height: 100%; padding: 0; border: 0; opacity: 0; cursor: pointer; }
 .settings-scope { display: flex; align-items: center; gap: 8px; margin-top: 18px; color: var(--muted); font-size: 10px; }
+.wallpaper-credit { display: inline-flex; max-width: 100%; margin-top: 20px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 6px; background: color-mix(in srgb, var(--surface) 86%, transparent); backdrop-filter: blur(12px); font-size: 9px; line-height: 1.7; }
+.wallpaper-credit span { color: var(--muted); }
+.preference-wallpaper { align-items: flex-start; }
+.preference-wallpaper .preference-copy { align-self: center; }
+.wallpaper-setting { width: min(440px, 48%); display: grid; gap: 9px; }
+.wallpaper-preview { min-height: 112px; display: flex; align-items: flex-end; padding: 10px; border: 1px solid var(--line); border-radius: 6px; background-position: center; background-size: cover; }
+.wallpaper-preview span { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; padding: 6px 8px; border: 1px solid #ffffff55; border-radius: 4px; background: #101813a6; color: white; font-size: 10px; }
+.wallpaper-preview span svg { flex: none; }
+.wallpaper-actions { display: flex; flex-wrap: wrap; gap: 7px; }
+.wallpaper-button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 34px; padding: 0 10px; font-size: 10px; }
+.wallpaper-button:disabled { opacity: .5; cursor: not-allowed; }
+.wallpaper-file-input { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.wallpaper-file-input:focus-visible + .wallpaper-button { outline: 2px solid var(--focus); outline-offset: 2px; }
+.wallpaper-help,.wallpaper-error { margin: 0; color: var(--muted); font-size: 10px; line-height: 1.5; }
+.wallpaper-error { color: var(--danger-text); }
 .dashboard-home { display: grid; gap: 18px; }
 .dashboard-server-strip { min-height: 76px; display: flex; align-items: center; gap: 26px; padding: 15px 18px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); }
 .dashboard-server-status { display: flex; align-items: center; gap: 12px; min-width: 170px; }
@@ -154,10 +179,19 @@ button.dashboard-metric { cursor: pointer; }
   .server-row-error { margin: 0; width: 100%; }
   .connection-state { padding: 24px 0; }
   .connection-state .heading-actions { flex-direction: column; align-items: stretch; }
-  .preference-row { flex-wrap: wrap; gap: 10px 12px; padding: 15px 0; }
+  .preference-row { flex-wrap: wrap; gap: 10px 12px; padding: 15px 13px; }
   .preference-icon { width: 34px; height: 34px; }
   .preference-copy { flex-basis: calc(100% - 48px); }
   .preference-row .theme-switcher,.preference-row .language-switcher { margin-left: 46px; }
+  .preference-appearance { align-items: flex-start; }
+  .appearance-controls { width: calc(100% - 46px); margin-left: 46px; align-items: flex-start; flex-direction: column; gap: 14px; }
+  .accent-setting { gap: 8px; }
+  .preference-wallpaper .preference-copy { align-self: auto; }
+  .wallpaper-setting { width: calc(100% - 46px); margin-left: 46px; }
+  .wallpaper-preview { min-height: 100px; }
+  .accent-swatches { gap: 5px; }
+  .accent-swatch { width: 24px; height: 24px; flex: none; }
+  .custom-accent { width: 24px; height: 24px; flex: none; }
   .dashboard-home { gap: 12px; }
   .dashboard-server-strip { flex-wrap: wrap; gap: 12px 16px; padding: 13px; }
   .dashboard-server-status { min-width: 135px; flex: 1; }

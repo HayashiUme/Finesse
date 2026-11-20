@@ -9,6 +9,10 @@ declare global {
     finesseTheme: {
       getPreference: () => ThemePreference
       setPreference: (value: ThemePreference) => void
+      getAccent: () => string
+      setAccent: (value: string) => void
+      getWallpaper: () => string | null
+      setWallpaper: (value: string | null) => void
     }
   }
 }
