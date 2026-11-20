@@ -4,13 +4,11 @@ import { useTranslation } from 'react-i18next'
 
 const colors = [
   { key: 'accentMiku', value: '#39c5bb' },
-  { key: 'accentSakura', value: '#e875a8' },
-  { key: 'accentSky', value: '#59a9dc' },
-  { key: 'accentMint', value: '#45b48d' },
-  { key: 'accentViolet', value: '#9a7bd1' },
-  { key: 'accentAmber', value: '#d99a42' },
-  { key: 'accentCoral', value: '#e87568' },
-  { key: 'accentIndigo', value: '#6579d8' },
+  { key: 'accentMakoto', value: '#3c6fd1' },
+  { key: 'accentKurisu', value: '#c84f63' },
+  { key: 'accentMadoka', value: '#e88bb7' },
+  { key: 'accentNagato', value: '#8176b5' },
+  { key: 'accentNono', value: '#e29a58' },
 ] as const
 
 function subscribe(onChange: () => void) {
