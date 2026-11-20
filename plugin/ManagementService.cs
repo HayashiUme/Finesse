@@ -8,7 +8,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Finesse.Plugin;
 
-public sealed record AuditEntry(DateTimeOffset Timestamp, string Action, string Target, bool Success, string Detail);
+public sealed record AuditEntry(DateTimeOffset Timestamp, string Action, string Target, bool Success, string Detail, string? Location = null);
 public sealed class ManagementException(int status, string message) : Exception(message)
 {
     public int Status { get; } = status;
@@ -21,6 +21,12 @@ public sealed class ManagementService(IGameManager games, IClientManager clients
     private readonly ConcurrentQueue<AuditEntry> _audit = new();
 
     public AuditEntry[] GetAudit() => _audit.Reverse().ToArray();
+
+    public void RecordPanelLogin(string ip, string? location)
+    {
+        AddAudit(new(DateTimeOffset.UtcNow, "login", ip, true, "Panel login", location));
+        logger.LogInformation("Finesse panel login from {Ip} ({Location})", ip, location ?? "location unavailable");
+    }
 
     public async Task ExecuteCommandAsync(string action, string target, bool? isPublic, CancellationToken cancellationToken)
     {
@@ -87,8 +93,13 @@ public sealed class ManagementService(IGameManager games, IClientManager clients
 
     private void Record(Command command, bool success, string detail)
     {
-        _audit.Enqueue(new(DateTimeOffset.UtcNow, command.Action, command.Target, success, detail));
-        while (_audit.Count > 200) _audit.TryDequeue(out _);
+        AddAudit(new(DateTimeOffset.UtcNow, command.Action, command.Target, success, detail));
         logger.LogInformation("Finesse audit: {Action} {Target}, success={Success}", command.Action, command.Target, success);
+    }
+
+    private void AddAudit(AuditEntry entry)
+    {
+        _audit.Enqueue(entry);
+        while (_audit.Count > 200) _audit.TryDequeue(out _);
     }
 }

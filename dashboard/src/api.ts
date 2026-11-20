@@ -1,5 +1,5 @@
 import { LocalizedError } from './i18n'
-import type { AuditEntry, Connection, Snapshot } from './types'
+import type { AuditEntry, Connection, PanelLogin, Snapshot } from './types'
 
 export function normalizeConnection(value: Connection, enforceHttps = true): Connection {
   const name = value.name.trim()
@@ -86,3 +86,8 @@ export async function fetchOverview(connection: Connection, signal?: AbortSignal
 }
 
 export const fetchAudit = (connection: Connection, signal?: AbortSignal) => getJson<AuditEntry[]>(connection, '/api/v1/audit', signal)
+
+export async function registerPanelLogin(connection: Connection) {
+  const response = await request(connection, '/api/v1/login', undefined, true)
+  try { return JSON.parse(response) as PanelLogin } catch { throw new LocalizedError('errorJson') }
+}

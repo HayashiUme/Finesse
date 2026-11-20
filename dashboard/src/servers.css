@@ -147,6 +147,15 @@ button.dashboard-metric { cursor: pointer; }
 .dashboard-activity b { font-size: 10px; font-weight: 600; color: var(--text-secondary); }
 .dashboard-activity small { margin-top: 4px; font-size: 9px; color: var(--muted); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .dashboard-activity time { color: var(--muted); font-size: 9px; font-variant-numeric: tabular-nums; }
+.panel-login-toast { position: fixed; right: 24px; bottom: 24px; z-index: 31; width: min(390px, calc(100vw - 32px)); display: grid; grid-template-columns: 20px minmax(0,1fr) 28px; align-items: start; gap: 11px; padding: 14px 13px; border: 1px solid color-mix(in srgb, var(--accent-color) 34%, var(--line)); border-radius: 7px; background: var(--surface); color: var(--ink); box-shadow: var(--toast-shadow); animation: panel-login-toast-in 160ms ease-out; }
+.panel-login-toast>svg { margin-top: 2px; color: var(--green-text); }
+.panel-login-toast-copy { min-width: 0; display: grid; gap: 4px; font-size: 11px; line-height: 1.5; }
+.panel-login-toast-copy b { font-size: 12px; }
+.panel-login-toast-copy span,.panel-login-toast-copy small { overflow-wrap: anywhere; }
+.panel-login-toast-copy small { color: var(--muted); font-size: 10px; }
+.panel-login-toast .icon-btn { width: 28px; height: 28px; }
+@keyframes panel-login-toast-in { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) { .panel-login-toast { animation: none; } }
 .dashboard-empty { min-height: 150px; display: flex; align-items: center; justify-content: center; gap: 9px; padding: 18px; color: var(--muted); font-size: 10px; text-align: center; }
 @media(max-width:1200px) {
   .server-row { grid-template-columns: minmax(150px,1fr) 115px auto; gap: 16px; }
@@ -189,6 +198,7 @@ button.dashboard-metric { cursor: pointer; }
   .preference-wallpaper .preference-copy { align-self: auto; }
   .wallpaper-setting { width: calc(100% - 46px); margin-left: 46px; }
   .wallpaper-preview { min-height: 100px; }
+  .panel-login-toast { right: 12px; bottom: calc(12px + env(safe-area-inset-bottom)); width: calc(100vw - 24px); }
   .accent-swatches { gap: 5px; }
   .accent-swatch { width: 24px; height: 24px; flex: none; }
   .custom-accent { width: 24px; height: 24px; flex: none; }

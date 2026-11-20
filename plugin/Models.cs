@@ -28,3 +28,5 @@ public sealed record SnapshotDto(
     string PluginVersion,
     IReadOnlyList<GameDto> Games,
     IReadOnlyList<PlayerDto> Players);
+
+public sealed record PanelLoginDto(string Ip, string? Location, DateTimeOffset Timestamp);

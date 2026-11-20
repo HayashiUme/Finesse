@@ -135,6 +135,14 @@ public sealed class FinesseHttpService : BackgroundService
         {
             await WriteJsonAsync(context.Response, new { status = "ok", pluginVersion = "0.1.0" });
         }
+        else if (request.HttpMethod == "POST" && path == "/api/v1/login")
+        {
+            var address = ResolveClientAddress(request);
+            var ip = address?.ToString() ?? "unknown";
+            var location = IsLocalAddress(address) ? "local" : null;
+            _management.RecordPanelLogin(ip, location);
+            await WriteJsonAsync(context.Response, new PanelLoginDto(ip, location, DateTimeOffset.UtcNow));
+        }
         else if (request.HttpMethod == "GET" && path == "/api/v1/overview")
         {
             var snapshot = _snapshots.GetSnapshot();
@@ -240,6 +248,45 @@ public sealed class FinesseHttpService : BackgroundService
         var candidateHash = SHA256.HashData(Encoding.UTF8.GetBytes(candidate));
         return CryptographicOperations.FixedTimeEquals(expectedHash, candidateHash);
     }
+
+    private static bool IsLocalAddress(IPAddress? address)
+    {
+        if (address is null) return false;
+        if (IPAddress.IsLoopback(address) || address.IsIPv6LinkLocal || address.IsIPv6SiteLocal) return true;
+        var bytes = address.GetAddressBytes();
+        if (bytes.Length == 4)
+        {
+            return bytes[0] == 10 ||
+                (bytes[0] == 172 && (bytes[1] & 0xf0) == 16) ||
+                (bytes[0] == 192 && bytes[1] == 168) ||
+                (bytes[0] == 169 && bytes[1] == 254) ||
+                (bytes[0] == 100 && (bytes[1] & 0xc0) == 64);
+        }
+        return bytes.Length == 16 && (bytes[0] & 0xfe) == 0xfc;
+    }
+
+    private static IPAddress? ResolveClientAddress(HttpListenerRequest request)
+    {
+        var realIp = request.Headers["X-Real-IP"];
+        if (TryNormalizeIp(realIp, out var address)) return address;
+
+        var forwardedFor = request.Headers["X-Forwarded-For"];
+        if (!string.IsNullOrWhiteSpace(forwardedFor) && TryNormalizeIp(forwardedFor.Split(',')[0].Trim(), out address))
+            return address;
+
+        return NormalizeIp(request.RemoteEndPoint?.Address);
+    }
+
+    private static bool TryNormalizeIp(string? value, out IPAddress? address)
+    {
+        address = null;
+        if (!IPAddress.TryParse(value, out var parsed)) return false;
+        address = NormalizeIp(parsed);
+        return true;
+    }
+
+    private static IPAddress? NormalizeIp(IPAddress? address) =>
+        address?.IsIPv4MappedToIPv6 == true ? address.MapToIPv4() : address;
 
     private static bool TryParsePlayerAction(string path, out int clientId, out string action)
     {

@@ -34,4 +34,5 @@ export type ServerRegistry = { version: 1; servers: SavedServer[]; activeServerI
 export type WorkspaceView = 'dashboard' | 'players' | 'games' | 'audit'
 export type AppView = WorkspaceView | 'settings' | 'servers'
 
-export type AuditEntry = { timestamp: string; action: string; target: string; success: boolean; detail: string }
+export type AuditEntry = { timestamp: string; action: string; target: string; success: boolean; detail: string; location?: string | null }
+export type PanelLogin = { ip: string; location: string | null; timestamp: string }
