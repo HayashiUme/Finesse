@@ -9,7 +9,7 @@ const en = {
   serversDescription: "Your Impostor servers, together in one place.",
   fleetSummary: "Server summary",
   checkingServers: "Checking server connections…",
-  fleetRefreshNote: "Status refreshes every 30 seconds.",
+  fleetRefreshNote: "Status refreshes every second.",
   searchServers: "Search name or address",
   serverReachable: "Reachable",
   serverUnavailable: "Connection unavailable",

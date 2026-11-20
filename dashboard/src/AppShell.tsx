@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Check, ChevronDown, CircleHelp, ClipboardList, Command, Gamepad2, LayoutDashboard, Plus, RefreshCw, Server, Settings2, Users } from 'lucide-react'
+import { Check, ChevronDown, ClipboardList, Command, Gamepad2, LayoutDashboard, Plus, RefreshCw, Server, Settings2, Users } from 'lucide-react'
 import { ConfigHelp, Modal } from './ConnectionUI'
 import type { AppView, SavedServer, WorkspaceView } from './types'
 
@@ -33,8 +33,7 @@ export default function AppShell({ children, live, connected, onRefresh, ...prop
       <nav aria-label={t('workspace')}>{navigation.filter(item => item.id !== 'dashboard').map(({ id, label, icon: Icon }) => <button key={id} title={t(label)} disabled={!props.current} className={`nav-link ${props.view === id ? 'active' : ''}`} aria-current={props.view === id ? 'page' : undefined} onClick={() => props.onNavigate(id)}><Icon size={17} /><span>{t(label)}</span></button>)}</nav>
       <div className="nav-caption section-caption">{t('management')}</div>
       <button className={`nav-link ${props.view === 'settings' ? 'active' : ''}`} title={t('preferences')} onClick={props.onSettings}><Settings2 size={17} /><span>{t('preferences')}</span></button>
-      <button className="nav-link" disabled={!props.current} title={t('connectionSettings')} onClick={() => props.current && props.onEdit(props.current)}><Server size={17} /><span>{t('connectionSettings')}</span></button>
-      <div className="sidebar-bottom"><button className="nav-link" title={t('help')} onClick={() => setHelp(true)}><CircleHelp size={17} /><span>{t('help')}</span></button><div className="user-profile"><div className="avatar">A</div><div><b>{t('admin')}</b><small>{t('apiSession')}</small></div></div></div>
+      <div className="sidebar-bottom"><div className="user-profile"><div className="avatar">A</div><div><b>{t('admin')}</b><small>{t('apiSession')}</small></div></div></div>
     </aside>
     <main className="main-area"><header className="topbar"><div className="breadcrumbs"><span>{props.view === 'servers' ? 'Finesse' : props.current?.name}</span><span className="crumb-slash">/</span><b>{title}</b></div><div className="top-actions">{connected && <div className="connection-pill"><span className="server-dot" />{t(live ? 'live' : 'polling')}</div>}{props.view !== 'settings' && <button className="icon-btn" title={t('refresh')} aria-label={t('refresh')} onClick={onRefresh}><RefreshCw size={16} /></button>}<button className="help-circle" title={t('help')} aria-label={t('help')} onClick={() => setHelp(true)}>?</button></div></header>{props.view !== 'servers' && props.current && <div className="mobile-server-context"><Server size={14} /><b>{props.current.name}</b></div>}<div className="content">{children}</div></main>
     {help && <Modal title={t('helpTitle')} onClose={() => setHelp(false)}><ConfigHelp /><p className="modal-copy">{t('originNote')}</p></Modal>}

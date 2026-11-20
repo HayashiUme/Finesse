@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { Activity, ArrowDownToLine, ArrowUpRight, Ban, ClipboardList, Gamepad2, Globe2, LoaderCircle, LockKeyhole, LogOut, RefreshCw, Search, Server, Settings2, ShieldCheck, Users, WifiOff, X } from 'lucide-react'
+import { Activity, ArrowDownToLine, ArrowUpRight, Ban, ClipboardList, Gamepad2, Globe2, LoaderCircle, LogOut, RefreshCw, Search, Server, Settings2, ShieldCheck, Users, WifiOff, X } from 'lucide-react'
 import { fetchAudit, fetchSnapshot, gameAction, playerAction, registerPanelLogin } from './api'
 import { useRealtime } from './useRealtime'
 import { errorMessage, LocalizedError, type TranslationKey } from './i18n'
@@ -30,13 +30,13 @@ export default function ServerWorkspace({ connection, view, ...shell }: Workspac
   const [loginInfoUnavailable, setLoginInfoUnavailable] = useState(false)
   const loginStarted = useRef(new Set<string>())
   const queryClient = useQueryClient()
+  const live = useRealtime(connection, Boolean(connection))
   const query = useQuery({
     queryKey: ['snapshot', connection], queryFn: ({ signal }) => fetchSnapshot(connection, signal),
-    enabled: Boolean(connection), retry: false, refetchInterval: 15000,
+    enabled: Boolean(connection), retry: false, refetchInterval: live ? false : 1000,
   })
   const connected = Boolean(connection && query.isSuccess)
-  const live = useRealtime(connection, connected)
-  const audit = useQuery({ queryKey: ['audit', connection], queryFn: ({ signal }) => fetchAudit(connection, signal), enabled: connected && (view === 'audit' || view === 'dashboard'), retry: false, refetchInterval: 15000 })
+  const audit = useQuery({ queryKey: ['audit', connection], queryFn: ({ signal }) => fetchAudit(connection, signal), enabled: connected && (view === 'audit' || view === 'dashboard'), retry: false, refetchInterval: 1000 })
 
   useEffect(() => {
     if (!connected || !connection || loginStarted.current.has(connection.id)) return
@@ -150,7 +150,6 @@ export default function ServerWorkspace({ connection, view, ...shell }: Workspac
         </section>}
 
         {view === 'audit' && <section className="section-block"><div className="section-head"><div><h2>{t('recentActions')}</h2><p>{t('auditDescription')}</p></div></div>{audit.isError ? <div className="setup-error">{errorMessage(audit.error)}</div> : audit.isPending ? <div className="empty-state">{t('loadingAudit')}</div> : <div className="table-wrap"><table><thead><tr><th>{t('time')}</th><th>{t('action')}</th><th>{t('target')}</th><th>{t('loginLocation')}</th><th>{t('result')}</th></tr></thead><tbody>{audit.data?.map((entry, index) => <tr key={`${entry.timestamp}-${index}`}><td>{new Date(entry.timestamp).toLocaleString(i18n.resolvedLanguage)}</td><td>{actionNames[entry.action] ? t(actionNames[entry.action]) : entry.action}</td><td>{entry.target}</td><td>{entry.location === 'local' ? t('loginLocationLocal') : entry.location ?? '—'}</td><td title={auditDetails[entry.detail] ? t(auditDetails[entry.detail]) : entry.detail}>{t(entry.success ? 'success' : 'failure')}</td></tr>)}</tbody></table>{!audit.data?.length && <div className="empty-state"><ClipboardList size={24} /><span>{t('noAudit')}</span></div>}</div>}</section>}
-        <footer className="page-footer"><span><LockKeyhole size={13} /> API v1 <span className="footer-sep">·</span> {t('pluginFooter', { version: data.pluginVersion })}</span><span>{t('footerBrand')}</span></footer>
     {selectedCode && <Modal title={t('roomTitle', { code: selectedCode })} onClose={() => setSelectedCode(null)}>{selectedGame ? <><div className="room-detail"><span>{gameStates[selectedGame.state] ? t(gameStates[selectedGame.state]) : selectedGame.state}</span><span>{t('roomPlayers', { count: selectedGame.playerCount, max: selectedGame.maxPlayers })}</span><span>{t(selectedGame.isPublic ? 'publicRoom' : 'privateRoom')}</span></div><div className="room-player-list">{selectedGame.players.map(p => <div key={p.clientId}><b>{p.name}</b><span>{p.isHost ? t('host') : `#${p.clientId}`}</span><button className="secondary-btn" disabled={pending} onClick={() => moderate(p, 'kick')}>{t('kick')}</button></div>)}</div><div className="modal-actions"><button className="secondary-btn" disabled={pending} onClick={() => manageGame(selectedGame, 'privacy')}>{t(selectedGame.isPublic ? 'makePrivate' : 'makePublic')}</button><button className="danger-btn" disabled={pending} onClick={() => manageGame(selectedGame, 'close')}>{t('clearRoom')}</button></div><p className="modal-copy">{t('clearRoomNote')}</p></> : <div className="empty-state">{t('roomOffline')}</div>}</Modal>}
     {panelLogin && <aside className="panel-login-toast" role="status" aria-live="polite"><ShieldCheck size={18} aria-hidden="true" /><div className="panel-login-toast-copy"><b>{t('actionPanelLogin')}</b><span>{t('loginIp')}: {panelLogin.ip || t('unknown')}</span><small>{t('loginLocation')}: {panelLogin.location === 'local' ? t('loginLocationLocal') : panelLogin.location ?? t('loginLocationUnavailable')}</small>{loginInfoUnavailable && <small>{t('panelLoginUnavailable')}</small>}</div><button className="icon-btn" title={t('dismiss')} aria-label={t('dismiss')} onClick={() => setPanelLogin(null)}><X size={15} /></button></aside>}
     {notice && <div className="toast" role="status"><span>{errorMessage(notice)}</span><button className="icon-btn" title={t('dismiss')} aria-label={t('dismiss')} onClick={() => setNotice(null)}><X size={15} /></button></div>}
@@ -187,7 +186,6 @@ function DashboardHome({ data, audit, auditLoading, auditError, formatUptime, nu
         {auditError ? <div className="dashboard-empty">{t('activityUnavailable')}</div> : auditLoading ? <div className="dashboard-empty">{t('loadingAudit')}</div> : audit.length ? <div className="dashboard-activity-list">{audit.slice(0, 5).map((entry, index) => <div className="dashboard-activity" key={`${entry.timestamp}-${index}`}><span className={`activity-result ${entry.success ? 'success' : 'failure'}`} /><div><b>{actionNames[entry.action] ? t(actionNames[entry.action]) : entry.action}</b><small>{entry.action === 'login' ? `${entry.target} · ${entry.location === 'local' ? t('loginLocationLocal') : entry.location ?? t('loginLocationUnavailable')}` : entry.target}</small></div><time dateTime={entry.timestamp}>{new Date(entry.timestamp).toLocaleTimeString(i18n.resolvedLanguage, { hour: '2-digit', minute: '2-digit' })}</time></div>)}</div> : <div className="dashboard-empty"><ClipboardList size={20} /><span>{t('noAudit')}</span></div>}
       </section>
     </div>
-    <footer className="page-footer"><span><LockKeyhole size={13} /> API v1 <span className="footer-sep">·</span> {t('pluginFooter', { version: data.pluginVersion })}</span><span>{t('footerBrand')}</span></footer>
   </div>
 }
 

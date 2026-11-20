@@ -10,7 +10,7 @@ import type { SavedServer } from './types'
 export default function ServersPage({ onRemove, ...shell }: ShellProps & { onRemove: (server: SavedServer) => void }) {
   const { t, i18n } = useTranslation()
   const [search, setSearch] = useState('')
-  const queries = useQueries({ queries: shell.servers.map(server => ({ queryKey: ['overview', server], queryFn: ({ signal }: { signal: AbortSignal }) => fetchOverview(server, signal), retry: false, refetchInterval: 30000 })) })
+  const queries = useQueries({ queries: shell.servers.map(server => ({ queryKey: ['overview', server], queryFn: ({ signal }: { signal: AbortSignal }) => fetchOverview(server, signal), retry: false, refetchInterval: 1000 })) })
   const reachable = queries.filter(q => q.isSuccess)
   const checking = queries.some(q => q.isFetching)
   const number = (value: number) => new Intl.NumberFormat(i18n.resolvedLanguage).format(value)

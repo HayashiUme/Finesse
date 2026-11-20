@@ -11,7 +11,7 @@ const zhCN: Record<keyof typeof en, string> = {
   serversDescription: "集中查看和管理你的 Impostor 服务器。",
   fleetSummary: "服务器概况",
   checkingServers: "正在检查服务器连接…",
-  fleetRefreshNote: "每 30 秒刷新连接状态。",
+  fleetRefreshNote: "每秒刷新连接状态。",
   searchServers: "搜索名称或地址",
   serverReachable: "连接正常",
   serverUnavailable: "无法连接",

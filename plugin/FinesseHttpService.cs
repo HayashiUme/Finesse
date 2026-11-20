@@ -215,7 +215,7 @@ public sealed class FinesseHttpService : BackgroundService
             {
                 var payload = JsonSerializer.SerializeToUtf8Bytes(new { type = "snapshot", data = _snapshots.GetSnapshot() }, JsonDefaults.Options);
                 await socket.SendAsync(payload, WebSocketMessageType.Text, true, cancellationToken);
-                var tick = Task.Delay(TimeSpan.FromSeconds(3), cancellationToken);
+                var tick = Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
                 while (!tick.IsCompleted)
                 {
                     var completed = await Task.WhenAny(receive, tick);
