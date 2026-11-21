@@ -53,10 +53,9 @@ jobs:
         if: ${{ steps.version.outputs.value }}
         working-directory: Finesse
         run: |
-          mkdir -p updates package/dashboard
-          cp plugin/bin/Release/net10.0/Finesse.Plugin.dll updates/Finesse.Plugin.dll
+          mkdir -p package/dashboard
+          cp plugin/bin/Release/net10.0/Finesse.Plugin.dll package/Finesse.Plugin.dll
           cp -R dashboard/dist/. package/dashboard/
-          cp updates/Finesse.Plugin.dll package/Finesse.Plugin.dll
           printf '{"version":"%s","pluginAsset":"Finesse.Plugin.dll","dashboardAsset":"Finesse-dashboard.zip"}\n' '${{ steps.version.outputs.value }}' > package/Finesse-update.json
           cd package && zip -qr ../Finesse-dashboard.zip dashboard
       - name: Create stable GitHub Release

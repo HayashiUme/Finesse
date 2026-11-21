@@ -1,6 +1,8 @@
 name: Nightly Release
 
 on:
+  push:
+    branches: [main]
   schedule:
     - cron: '17 4 * * *'
   workflow_dispatch:
@@ -48,10 +50,9 @@ jobs:
       - name: Package release assets
         working-directory: Finesse
         run: |
-          mkdir -p updates package/dashboard
-          cp plugin/bin/Release/net10.0/Finesse.Plugin.dll updates/Finesse.Plugin.dll
+          mkdir -p package/dashboard
+          cp plugin/bin/Release/net10.0/Finesse.Plugin.dll package/Finesse.Plugin.dll
           cp -R dashboard/dist/. package/dashboard/
-          cp updates/Finesse.Plugin.dll package/Finesse.Plugin.dll
           printf '{"version":"%s","pluginAsset":"Finesse.Plugin.dll","dashboardAsset":"Finesse-dashboard.zip"}\n' '${{ steps.version.outputs.full }}' > package/Finesse-update.json
           cd package && zip -qr ../Finesse-dashboard.zip dashboard
       - uses: softprops/action-gh-release@v2
