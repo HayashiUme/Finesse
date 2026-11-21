@@ -1,0 +1,33 @@
+services:
+  dashboard:
+    image: ghcr.io/hayashiume/finesse-dashboard:${FINESSE_IMAGE_TAG:-latest}
+    restart: unless-stopped
+    ports:
+      - "${FINESSE_DASHBOARD_PORT:-4173}:4173"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:4173/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    labels:
+      - wud.trigger.dockercompose.local.enabled=true
+      - wud.watch.digest=true
+      - wud.rollback.enable=true
+
+  wud:
+    image: getwud/wud:9
+    profiles: ["auto-update"]
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./compose.yaml:/wud/compose.yaml
+      - ./.env:/wud/.env:ro
+    environment:
+      WUD_WATCHER_LOCAL_SOCKET: /var/run/docker.sock
+      WUD_TRIGGER_DOCKERCOMPOSE_LOCAL_FILE: /wud/compose.yaml
+      WUD_TRIGGER_DOCKERCOMPOSE_LOCAL_AUTO: "true"
+      WUD_TRIGGER_DOCKERCOMPOSE_LOCAL_INCLUDEBYDEFAULT: "false"
+      WUD_TRIGGER_DOCKERCOMPOSE_LOCAL_BACKUP: "true"
+      WUD_TRIGGER_DOCKERCOMPOSE_LOCAL_ROLLBACK: "true"
+

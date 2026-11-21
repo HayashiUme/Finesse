@@ -9,6 +9,7 @@ bin/
 obj/
 .vs/
 .env.local
+.env
 *.tsbuildinfo
 finesse.json
 finesse.json.*.tmp
