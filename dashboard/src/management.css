@@ -1,4 +1,12 @@
 .management-stack { display: grid; gap: 22px; }
+.update-status { display: grid; gap: 8px; padding: 11px 14px; margin: 0 0 16px; border: 1px solid var(--line); border-radius: 7px; background: color-mix(in srgb, var(--surface) 88%, transparent); color: var(--green-text); font-size: 11px; }
+.update-status>svg { vertical-align: middle; }
+.update-status:not(.update-available) { display: flex; align-items: center; gap: 8px; }
+.update-status.update-error { color: var(--warning-text); }
+.update-title,.update-row { display: flex; align-items: center; gap: 8px; }
+.update-row { justify-content: space-between; padding-left: 25px; color: var(--text-secondary); }
+.update-row a { display: inline-flex; align-items: center; gap: 4px; color: var(--green-text); text-decoration: none; white-space: nowrap; }
+.update-restart-note { margin: 0 0 0 25px; color: var(--muted); line-height: 1.6; }
 .management-stack h2,.messages-panel h2,.system-panel h2 { display: flex; align-items: center; gap: 8px; }
 .management-stack h2>svg,.messages-panel h2>svg,.system-panel h2>svg { color: var(--green-text); }
 .management-search { padding: 0 20px 16px; }
@@ -46,5 +54,13 @@
 .plugin-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
 .plugin-actions .secondary-btn,.plugin-actions .danger-btn { min-height: 30px; padding: 0 9px; font-size: 10px; }
 .plugin-protected { color: var(--muted); font-size: 10px; }
+.room-detail-modal { width: min(640px, 100%); }
+.room-info-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 0 24px; margin: 18px 0 8px; }
+.room-info-grid>div { min-width: 0; padding: 11px 0; border-bottom: 1px solid var(--line-soft); }
+.room-info-grid dt { margin-bottom: 5px; color: var(--muted); font-size: 10px; }
+.room-info-grid dd { margin: 0; color: var(--ink); font-size: 12px; overflow-wrap: anywhere; }
+.room-detail-state { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 20px; color: var(--text-secondary); font-size: 10px; }
+.room-detail-state span { padding: 4px 7px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface-soft); }
+.room-players-heading { margin: 0 0 5px; font-size: 13px; }
 .dashboard-plugin-version { margin-left: auto; }
-@media(max-width:700px) { .system-grid { grid-template-columns: minmax(0,1fr); } .management-body { padding: 0 16px 16px; } .bans-panel .dashboard-panel-head { flex-wrap: wrap; } .management-search .search-box { width: 100%; } }
+@media(max-width:700px) { .system-grid,.room-info-grid { grid-template-columns: minmax(0,1fr); } .management-body { padding: 0 16px 16px; } .bans-panel .dashboard-panel-head { flex-wrap: wrap; } .management-search .search-box { width: 100%; } }

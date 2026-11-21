@@ -27,26 +27,37 @@ public sealed class SnapshotService
         var games = _gameManager.Games
             .Where(game => game.GameState is not (GameStates.Ended or GameStates.Destroyed))
             .Select(ToGame)
+            .Where(game => game.PlayerCount > 0 && game.Players.Count > 0 && game.HostName is not null)
             .ToArray();
         var players = _clientManager.Clients
             .Select(ToClient)
             .ToArray();
         var activeGames = games.Count(game => game.State == nameof(GameStates.Started));
 
-        return new SnapshotDto("online", (long)_uptime.Elapsed.TotalSeconds, players.Length, activeGames, games.Length, "0.1.0", games, players, _metrics.GetMetrics());
+        return new SnapshotDto("online", (long)_uptime.Elapsed.TotalSeconds, players.Length, activeGames, games.Length, GetPluginVersion(), games, players, _metrics.GetMetrics());
     }
+
+    public static string GetPluginVersion() =>
+        typeof(SnapshotService).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
+        ?? typeof(SnapshotService).Assembly.GetName().Version?.ToString(3)
+        ?? "unknown";
 
     private static GameDto ToGame(IGame game)
     {
         var players = game.Players.Select(ToPlayer).ToArray();
+        var host = game.Host?.Client;
+        var hostPlatform = host?.PlatformSpecificData?.PlatformName;
+        if (string.IsNullOrWhiteSpace(hostPlatform)) hostPlatform = host?.PlatformSpecificData?.Platform.ToString() ?? "UnknownPlatform";
         return new GameDto(
             game.Code.Code,
             game.GameState.ToString(),
             game.PlayerCount,
             game.Options.MaxPlayers,
             game.IsPublic,
-            game.Host?.Client.Name,
-            players, game.Options.Map.ToString(), game.Options.GameMode.ToString(), game.DisplayName);
+            host?.Name ?? "Unknown host",
+            players, game.Options.Map.ToString(), game.Options.GameMode.ToString(), game.DisplayName,
+            game.Code.Value, game.PublicIp.Address.ToString(), hostPlatform,
+            host?.ChatMode == QuickChatModes.QuickChatOnly, game.Options.NumImpostors, game.Options.Keywords.ToString());
     }
 
     private static PlayerDto ToPlayer(Impostor.Api.Net.IClientPlayer player)

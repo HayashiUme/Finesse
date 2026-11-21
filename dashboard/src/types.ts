@@ -16,6 +16,8 @@ export type Game = {
   hostName: string | null
   players: Player[]
   map?: string | null; mode?: string | null; name?: string | null
+  gameId?: number | null; hostAddress?: string | null; hostPlatform?: string | null
+  quickChatOnly?: boolean | null; impostorCount?: number | null; language?: string | null
 }
 
 export type Overview = {

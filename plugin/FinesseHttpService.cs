@@ -218,7 +218,7 @@ public sealed class FinesseHttpService : BackgroundService
         }
         else if (request.HttpMethod == "GET" && path == "/api/v1/health")
         {
-            await WriteJsonAsync(context.Response, new { status = "ok", pluginVersion = "0.1.0" });
+            await WriteJsonAsync(context.Response, new { status = "ok", pluginVersion = SnapshotService.GetPluginVersion() });
         }
         else if (request.HttpMethod == "POST" && path == "/api/v1/login")
         {

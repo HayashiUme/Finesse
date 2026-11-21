@@ -10,7 +10,9 @@ public sealed record GameDto(
     int MaxPlayers,
     bool IsPublic,
     string? HostName,
-    IReadOnlyList<PlayerDto> Players, string? Map = null, string? Mode = null, string? Name = null);
+    IReadOnlyList<PlayerDto> Players, string? Map = null, string? Mode = null, string? Name = null,
+    int? GameId = null, string? HostAddress = null, string? HostPlatform = null, bool? QuickChatOnly = null,
+    int? ImpostorCount = null, string? Language = null);
 
 public sealed record ServerInfoDto(string Runtime, string OperatingSystem, string Architecture, int ProcessId,
     int ProcessorCount, string? ServerVersion, string ApiAssemblyVersion);

@@ -1,0 +1,74 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: Finesse
+      - uses: actions/checkout@v4
+        with:
+          repository: HayashiUme/Impostor
+          ref: master
+          path: Impostor
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: Finesse/dashboard/package-lock.json
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Read version
+        id: version
+        working-directory: Finesse
+        run: |
+          VERSION=$(tr -d '\r\n' < VERSION)
+          if [[ "$VERSION" == *-dev* ]]; then echo "VERSION '$VERSION' is a development build; stable Release skipped"; exit 0; fi
+          echo "value=$VERSION" >> "$GITHUB_OUTPUT"
+      - name: Stop when development version
+        if: ${{ !steps.version.outputs.value }}
+        run: echo "Development version detected; no stable Release will be created."
+      - name: Build dashboard
+        if: ${{ steps.version.outputs.value }}
+        working-directory: Finesse/dashboard
+        env:
+          FINESSE_VERSION: ${{ steps.version.outputs.value }}
+        run: npm ci && npm run test:i18n && npm run test:connections && npm run build
+      - name: Build plugin
+        if: ${{ steps.version.outputs.value }}
+        working-directory: Finesse
+        run: dotnet build plugin/Finesse.Plugin.csproj --configuration Release -p:Version='${{ steps.version.outputs.value }}' -p:InformationalVersion='${{ steps.version.outputs.value }}'
+      - name: Package release assets
+        if: ${{ steps.version.outputs.value }}
+        working-directory: Finesse
+        run: |
+          mkdir -p updates package/dashboard
+          cp plugin/bin/Release/net10.0/Finesse.Plugin.dll updates/Finesse.Plugin.dll
+          cp -R dashboard/dist/. package/dashboard/
+          cp updates/Finesse.Plugin.dll package/Finesse.Plugin.dll
+          printf '{"version":"%s","pluginAsset":"Finesse.Plugin.dll","dashboardAsset":"Finesse-dashboard.zip"}\n' '${{ steps.version.outputs.value }}' > package/Finesse-update.json
+          cd package && zip -qr ../Finesse-dashboard.zip dashboard
+      - name: Create stable GitHub Release
+        if: ${{ steps.version.outputs.value }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.value }}
+          name: Finesse v${{ steps.version.outputs.value }}
+          prerelease: false
+          make_latest: true
+          generate_release_notes: true
+          files: |
+            Finesse/Finesse-dashboard.zip
+            Finesse/package/Finesse.Plugin.dll
+            Finesse/package/Finesse-update.json

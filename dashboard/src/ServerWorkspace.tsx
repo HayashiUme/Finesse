@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { ArrowDownToLine, ArrowUpRight, Ban, ClipboardList, Gamepad2, Globe2, LoaderCircle, LogOut, Plug, RefreshCw, Search, Settings2, ShieldCheck, Users, WifiOff, X } from 'lucide-react'
+import { ArrowDownToLine, ArrowUpRight, Ban, ClipboardList, Gamepad2, Globe2, LoaderCircle, LogOut, Plug, RefreshCw, Search, Settings2, ShieldCheck, Users, WifiOff, X, Download, CircleAlert, Check } from 'lucide-react'
 import { fetchAudit, fetchPlugins, fetchSnapshot, gameAction, playerAction } from './api'
 import { useRealtime } from './useRealtime'
 import { errorMessage, LocalizedError, type TranslationKey } from './i18n'
@@ -26,6 +26,54 @@ const auditDetails: Record<string, Extract<TranslationKey, `audit${string}`>> = 
   'Player must be in a room for a room ban': 'auditRoomRequired', 'Operation failed': 'auditFailed',
 }
 
+const releaseEndpoint = 'https://api.github.com/repos/HayashiUme/Finesse/releases'
+
+async function fetchLatestRelease(development: boolean) {
+  const response = await fetch(development ? `${releaseEndpoint}?per_page=100` : `${releaseEndpoint}/latest`, { headers: { Accept: 'application/vnd.github+json' } })
+  if (!response.ok) throw new Error(`GitHub release check failed (${response.status})`)
+  const releases = await response.json() as Array<{ tag_name: string; html_url: string; prerelease: boolean; assets: Array<{ name: string; browser_download_url: string }> }> | { tag_name: string; html_url: string; prerelease: boolean; assets: Array<{ name: string; browser_download_url: string }> }
+  return (Array.isArray(releases) ? releases.filter(release => release.prerelease) : [releases])[0]
+}
+
+function parseVersion(version: string) {
+  const normalized = version.replace(/^v/, '').split('+')[0]
+  const [core, suffix = ''] = normalized.split('-', 2)
+  return { core: core.split('.').map(part => Number(part) || 0), suffix: suffix.split('.').filter(Boolean) }
+}
+function isNewer(candidate: string, current: string) {
+  const a = parseVersion(candidate), b = parseVersion(current)
+  for (let i = 0; i < Math.max(a.core.length, b.core.length); i++) if ((a.core[i] ?? 0) !== (b.core[i] ?? 0)) return (a.core[i] ?? 0) > (b.core[i] ?? 0)
+  if (!a.suffix.length || !b.suffix.length) return !a.suffix.length && b.suffix.length > 0
+  for (let i = 0; i < Math.max(a.suffix.length, b.suffix.length); i++) {
+    if (a.suffix[i] === b.suffix[i]) continue
+    if (a.suffix[i] === undefined) return false
+    if (b.suffix[i] === undefined) return true
+    const an = Number(a.suffix[i]), bn = Number(b.suffix[i])
+    if (!Number.isNaN(an) && !Number.isNaN(bn)) return an > bn
+    return a.suffix[i] > b.suffix[i]
+  }
+  return false
+}
+
+function UpdateStatus({ release, releaseError, releasePending, pluginVersion }: { release?: Awaited<ReturnType<typeof fetchLatestRelease>>; releaseError: boolean; releasePending: boolean; pluginVersion: string }) {
+  const { t } = useTranslation()
+  if (releasePending) return <section className="update-status"><LoaderCircle className="spin" size={17} /><span>{t('checkingUpdates')}</span></section>
+  if (releaseError) return <section className="update-status update-error"><CircleAlert size={17} /><span>{t('updateCheckUnavailable')}</span></section>
+  if (!release) return <section className="update-status"><Check size={17} /><span>{t('upToDate')}</span></section>
+
+  const tagVersion = release.tag_name.replace(/^v/, '')
+  const panelUpdate = isNewer(tagVersion, __FINESSE_VERSION__)
+  const pluginRelease = release.assets.find(asset => asset.name === 'Finesse.Plugin.dll')
+  const pluginUpdate = isNewer(tagVersion, pluginVersion)
+  if (!panelUpdate && !pluginUpdate) return <section className="update-status"><Check size={17} /><span>{t('upToDate')}</span></section>
+  return <section className="update-status update-available">
+    <div className="update-title"><Download size={17} /><strong>{t('updatesAvailable')}</strong></div>
+    {panelUpdate && <div className="update-row"><span>{t('dashboardUpdate', { version: tagVersion })}</span><a href={release.html_url} target="_blank" rel="noreferrer">{t('viewRelease')}<ArrowUpRight size={13} /></a></div>}
+    {pluginUpdate && <div className="update-row"><span>{t('pluginUpdate', { version: tagVersion })}</span>{pluginRelease && <a href={pluginRelease.browser_download_url}>{t('downloadPlugin')}<Download size={13} /></a>}</div>}
+    {pluginUpdate && <p className="update-restart-note">{t('pluginRestartRequired')}</p>}
+  </section>
+}
+
 export default function ServerWorkspace({ connection, view, ...shell }: WorkspaceProps) {
   const { t, i18n } = useTranslation()
   const auth = useAuth()
@@ -45,6 +93,7 @@ export default function ServerWorkspace({ connection, view, ...shell }: Workspac
   })
   const connected = Boolean(connection && query.isSuccess)
   const audit = useQuery({ queryKey: ['audit', connection], queryFn: ({ signal }) => fetchAudit(connection, signal), enabled: connected && (view === 'audit' || view === 'dashboard'), retry: false, refetchInterval: 1000 })
+  const releases = useQuery({ queryKey: ['finesse-releases', __FINESSE_VERSION__.includes('-dev')], queryFn: ({ queryKey }) => fetchLatestRelease(queryKey[1] as boolean), enabled: connected && view === 'dashboard', staleTime: 15 * 60_000, retry: 1 })
 
   const players = query.data?.players ?? []
   const games = query.data?.games ?? []
@@ -124,7 +173,10 @@ export default function ServerWorkspace({ connection, view, ...shell }: Workspac
         {view === 'messages' && <MessagesPanel connection={connection} games={activeGames} />}
         {view === 'plugins' && <PluginsPanel connection={connection} canManage={canManagePlugins} />}
 
-        {view === 'dashboard' && <DashboardHome connection={connection} data={data} audit={audit.data ?? []} auditLoading={audit.isPending} auditError={audit.isError} formatUptime={formatUptime} number={number} live={live} onPlayers={() => shell.onNavigate('players')} onGames={() => shell.onNavigate('games')} onPlugins={() => shell.onNavigate('plugins')} onAudit={() => shell.onNavigate('audit')} onRoom={setSelectedCode} />}
+        {view === 'dashboard' && <>
+          <UpdateStatus release={releases.data} releaseError={releases.isError} releasePending={releases.isPending} pluginVersion={data.pluginVersion} />
+          <DashboardHome connection={connection} data={data} audit={audit.data ?? []} auditLoading={audit.isPending} auditError={audit.isError} formatUptime={formatUptime} number={number} live={live} onPlayers={() => shell.onNavigate('players')} onGames={() => shell.onNavigate('games')} onPlugins={() => shell.onNavigate('plugins')} onAudit={() => shell.onNavigate('audit')} onRoom={setSelectedCode} />
+        </>}
 
         {view === 'players' && <section className="stats-grid">
           <StatCard label={t('onlinePlayers')} value={number(data.onlinePlayers)} detail={t('allConnections')} icon={<Users size={18} />} accent="mint" />
@@ -150,7 +202,17 @@ export default function ServerWorkspace({ connection, view, ...shell }: Workspac
         </section>}
 
         {view === 'audit' && <section className="section-block"><div className="section-head"><div><h2>{t('recentActions')}</h2><p>{t('auditDescription')}</p></div></div>{audit.isError ? <div className="setup-error">{errorMessage(audit.error)}</div> : audit.isPending ? <div className="empty-state">{t('loadingAudit')}</div> : <div className="table-wrap"><table><thead><tr><th>{t('time')}</th><th>{t('action')}</th><th>{t('target')}</th><th>{t('loginLocation')}</th><th>{t('result')}</th></tr></thead><tbody>{audit.data?.map((entry, index) => <tr key={`${entry.timestamp}-${index}`}><td>{new Date(entry.timestamp).toLocaleString(i18n.resolvedLanguage)}</td><td>{actionNames[entry.action] ? t(actionNames[entry.action]) : entry.action}</td><td>{entry.target}</td><td>{entry.location === 'local' ? t('loginLocationLocal') : entry.location ?? '—'}</td><td title={auditDetails[entry.detail] ? t(auditDetails[entry.detail]) : entry.detail}>{t(entry.success ? 'success' : 'failure')}</td></tr>)}</tbody></table>{!audit.data?.length && <div className="empty-state"><ClipboardList size={24} /><span>{t('noAudit')}</span></div>}</div>}</section>}
-    {selectedCode && <Modal title={t('roomTitle', { code: selectedCode })} onClose={() => setSelectedCode(null)}>{selectedGame ? <><div className="room-detail"><span>{gameStates[selectedGame.state] ? t(gameStates[selectedGame.state]) : selectedGame.state}</span><span>{t('roomPlayers', { count: selectedGame.playerCount, max: selectedGame.maxPlayers })}</span><span>{t(selectedGame.isPublic ? 'publicRoom' : 'privateRoom')}</span><span>{selectedGame.map}</span><span>{selectedGame.mode}</span></div><div className="room-player-list">{selectedGame.players.map(p => <div key={p.clientId}><b>{p.name}</b><span>{p.isHost ? t('host') : `#${p.clientId}`}</span><button className="secondary-btn" disabled={pending} onClick={() => moderate(p, 'kick')}>{t('kick')}</button></div>)}</div><div className="modal-actions"><button className="secondary-btn" disabled={pending} onClick={() => manageGame(selectedGame, 'privacy')}>{t(selectedGame.isPublic ? 'makePrivate' : 'makePublic')}</button><button className="danger-btn" disabled={pending} onClick={() => manageGame(selectedGame, 'close')}>{t('clearRoom')}</button></div><p className="modal-copy">{t('clearRoomNote')}</p><div className="room-message"><h3>{t('sendRoomMessage')}</h3><MessageComposer key={selectedGame.code} connection={connection} code={selectedGame.code} /></div></> : <div className="empty-state">{t('roomOffline')}</div>}</Modal>}
+    {selectedCode && <Modal title={t('roomTitle', { code: selectedCode })} className="room-detail-modal" onClose={() => setSelectedCode(null)}>{selectedGame ? <><dl className="room-info-grid">{[
+      [t('roomHostIp'), selectedGame.hostAddress],
+      [t('gameId'), selectedGame.gameId],
+      [t('roomPlayerCount'), t('roomPlayers', { count: selectedGame.playerCount, max: selectedGame.maxPlayers })],
+      [t('roomHostName'), selectedGame.hostName],
+      [t('hostPlatform'), selectedGame.hostPlatform],
+      [t('quickChat'), selectedGame.quickChatOnly == null ? t('unknown') : t(selectedGame.quickChatOnly ? 'yes' : 'no')],
+      [t('impostorCount'), selectedGame.impostorCount],
+      [t('mapName'), selectedGame.map],
+      [t('roomLanguage'), selectedGame.language],
+    ].map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value == null || value === '' ? t('unknown') : value}</dd></div>)}</dl><div className="room-detail-state"><span>{gameStates[selectedGame.state] ? t(gameStates[selectedGame.state]) : selectedGame.state}</span><span>{t(selectedGame.isPublic ? 'publicRoom' : 'privateRoom')}</span><span>{selectedGame.mode}</span></div><h3 className="room-players-heading">{t('roomPlayersSection')}</h3><div className="room-player-list">{selectedGame.players.map(p => <div key={p.clientId}><b>{p.name}</b><span>{p.isHost ? t('host') : `#${p.clientId}`}</span><button className="secondary-btn" disabled={pending} onClick={() => moderate(p, 'kick')}>{t('kick')}</button></div>)}</div><div className="modal-actions"><button className="secondary-btn" disabled={pending} onClick={() => manageGame(selectedGame, 'privacy')}>{t(selectedGame.isPublic ? 'makePrivate' : 'makePublic')}</button><button className="danger-btn" disabled={pending} onClick={() => manageGame(selectedGame, 'close')}>{t('clearRoom')}</button></div><p className="modal-copy">{t('clearRoomNote')}</p><div className="room-message"><h3>{t('sendRoomMessage')}</h3><MessageComposer key={selectedGame.code} connection={connection} code={selectedGame.code} /></div></> : <div className="empty-state">{t('roomOffline')}</div>}</Modal>}
 
     {selectedPlayerId !== null && <Modal title={t('playerDetails')} onClose={() => setSelectedPlayerId(null)}>{selectedPlayer ? <PlayerDetails key={selectedPlayerId} player={selectedPlayer} connection={connection} /> : <p className="modal-copy">{t('playerOffline')}</p>}</Modal>}
     {kickTarget && <Modal title={t('kickPlayerTitle', { name: kickTarget.name })} onClose={() => { if (!pending) setKickTarget(null) }}><form className="kick-form" onSubmit={event => void submitKick(event)}><label>{t('kickReason')}<textarea autoFocus maxLength={200} rows={3} value={kickReason} onChange={event => setKickReason(event.target.value)} placeholder={t('kickReasonOptional')} /><small>{t('kickReasonHelp')}</small></label><div className="modal-actions"><button type="button" className="secondary-btn" disabled={pending} onClick={() => setKickTarget(null)}>{t('cancel')}</button><button className="danger-btn" disabled={pending}>{pending ? <LoaderCircle className="spin" size={15} /> : <LogOut size={15} />}{t(pending ? 'saving' : 'kickPlayer')}</button></div></form></Modal>}
