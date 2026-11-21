@@ -1,10 +1,11 @@
 import { useTranslation } from 'react-i18next'
-import { Image, Languages, MonitorCog, Palette } from 'lucide-react'
+import { Image, Languages, MonitorCog, Palette, SwatchBook } from 'lucide-react'
 import AppShell, { type ShellProps } from './AppShell'
 import AccentColorPicker from './AccentColorPicker'
 import LanguageSwitcher from './LanguageSwitcher'
 import ThemeSwitcher from './ThemeSwitcher'
 import WallpaperPicker from './WallpaperPicker'
+import ThemePackControls from './ThemePackControls'
 
 export default function SettingsPage(props: ShellProps) {
   const { t } = useTranslation()
@@ -13,6 +14,7 @@ export default function SettingsPage(props: ShellProps) {
     <section className="preference-list" aria-label={t('preferences')}>
       <div className="preference-row"><div className="preference-icon"><Languages size={18} /></div><div className="preference-copy"><h2>{t('language')}</h2><p>{t('languageDescription')}</p></div><LanguageSwitcher /></div>
       <div className="preference-row preference-appearance"><div className="preference-icon"><Palette size={18} /></div><div className="preference-copy"><h2>{t('theme')}</h2><p>{t('themeDescription')}</p></div><div className="appearance-controls"><ThemeSwitcher /><div className="accent-setting"><span>{t('themeColor')}</span><AccentColorPicker /></div></div></div>
+      <div className="preference-row preference-theme-packs"><div className="preference-icon"><SwatchBook size={18} /></div><div className="preference-copy"><h2>{t('themePresets')}</h2><p>{t('themePresetsDescription')}</p></div><ThemePackControls /></div>
       <div className="preference-row preference-wallpaper"><div className="preference-icon"><Image size={18} /></div><div className="preference-copy"><h2>{t('wallpaper')}</h2><p>{t('wallpaperDescription')}</p></div><WallpaperPicker /></div>
     </section>
     <div className="settings-scope"><MonitorCog size={15} /><span>{t('preferencesScope')}</span></div>

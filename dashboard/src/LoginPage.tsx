@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, Command, LoaderCircle, LockKeyhole, Server, ShieldCheck } from 'lucide-react'
+import { ArrowLeft, LoaderCircle, LockKeyhole, Server, ShieldCheck } from 'lucide-react'
 import type { ShellProps } from './AppShell'
 import { ConfigHelp, Modal } from './ConnectionUI'
 import LanguageSwitcher from './LanguageSwitcher'
@@ -9,6 +9,7 @@ import { hasSecureTransport, LoginError, login } from './api'
 import { useAuth } from './auth'
 import { errorMessage } from './i18n'
 import type { AuthChallenge, SavedServer } from './types'
+import BrandLogo from './BrandLogo'
 
 export default function LoginPage({ server, servers, onSelect, onDirectory }: ShellProps & { server: SavedServer }) {
   const { t } = useTranslation()
@@ -43,7 +44,7 @@ export default function LoginPage({ server, servers, onSelect, onDirectory }: Sh
     } finally { setBusy(false) }
   }
   return <main className="login-screen">
-    <header className="login-top"><div className="brand"><div className="brand-mark"><Command size={19} /></div><div><strong>finesse</strong><span>{t('brandControl')}</span></div></div><div className="login-appearance"><ThemeSwitcher /><LanguageSwitcher /><button className="help-circle" title={t('help')} aria-label={t('help')} onClick={() => setHelp(true)}>?</button></div></header>
+    <header className="login-top"><div className="brand"><div className="brand-mark"><BrandLogo /></div><div><strong>Finesse</strong><span>{t('brandControl')}</span></div></div><div className="login-appearance"><ThemeSwitcher /><LanguageSwitcher /><button className="help-circle" title={t('help')} aria-label={t('help')} onClick={() => setHelp(true)}>?</button></div></header>
     <div className="login-stage"><section className="auth-card" aria-labelledby="login-title">
       <button className="login-back" onClick={onDirectory}><ArrowLeft size={15} />{t('backToServers')}</button>
       <div className="setup-emblem"><LockKeyhole size={25} /></div><h1 id="login-title">{t('signIn')}</h1><p className="modal-copy">{t('signInDescription', { name: server.name })}</p>

@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Check, ChevronDown, ClipboardList, Command, Gamepad2, LayoutDashboard, LogOut, Megaphone, Plug, Plus, RefreshCw, Server, Settings2, ShieldCheck, UserRoundCog, Users } from 'lucide-react'
+import { Check, ChevronDown, ClipboardList, Gamepad2, LayoutDashboard, LogOut, Megaphone, Plug, Plus, RefreshCw, Server, Settings2, ShieldCheck, UserRoundCog, Users } from 'lucide-react'
 import { ConfigHelp, Modal } from './ConnectionUI'
 import type { AppView, SavedServer, WorkspaceView } from './types'
 import { useAuth } from './auth'
 import { Avatar } from './AccountSettings'
+import BrandLogo from './BrandLogo'
 
 export type ShellProps = {
   servers: SavedServer[]; current: SavedServer | null; view: AppView
@@ -32,7 +33,7 @@ export default function AppShell({ children, live, connected, onRefresh, ...prop
   const account = props.current ? auth.sessions[props.current.id]?.user : undefined
   return <div className="app-shell">
     <aside className="sidebar">
-      <div className="brand"><div className="brand-mark"><Command size={19} /></div><div><strong>finesse</strong><span>{t('brandControl')}</span></div></div>
+      <div className="brand"><div className="brand-mark"><BrandLogo /></div><div><strong>Finesse</strong><span>{t('brandControl')}</span></div></div>
       <ServerSwitcher {...props} />
       <div className="sidebar-scroll">
       <nav aria-label={t('workspace')}><button title={t('navDashboard')} className={`nav-link ${props.view === 'dashboard' ? 'active' : ''}`} aria-current={props.view === 'dashboard' ? 'page' : undefined} disabled={!props.current} onClick={() => props.onNavigate('dashboard')}><LayoutDashboard size={17} /><span>{t('navDashboard')}</span></button></nav>

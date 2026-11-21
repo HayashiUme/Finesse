@@ -3,6 +3,7 @@ import { Check, Pipette } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 const colors = [
+  { key: 'accentFinesse', value: '#c8a2c8' },
   { key: 'accentMiku', value: '#39c5bb' },
   { key: 'accentMakoto', value: '#3c6fd1' },
   { key: 'accentKurisu', value: '#c84f63' },

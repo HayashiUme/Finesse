@@ -13,6 +13,11 @@ declare global {
       setAccent: (value: string) => void
       getWallpaper: () => string | null
       setWallpaper: (value: string | null) => void
+      getLogo: () => string
+      getName: () => string
+      getAppearance: () => { name: string; accent: string; logo: string; wallpaper: string | null }
+      setLogo: (value: string) => void
+      setTheme: (value: unknown) => boolean
     }
   }
 }

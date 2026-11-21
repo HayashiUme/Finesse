@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import { Command, LockKeyhole, Server, ShieldCheck, Wifi, WifiOff, LoaderCircle, X } from 'lucide-react'
+import { LockKeyhole, Server, ShieldCheck, Wifi, WifiOff, LoaderCircle, X } from 'lucide-react'
 import ThemeSwitcher from './ThemeSwitcher'
 import LanguageSwitcher from './LanguageSwitcher'
 import type { Connection } from './types'
+import BrandLogo from './BrandLogo'
 
 export function ConnectionFields({ value, onChange }: { value: Connection; onChange: (value: Connection) => void }) {
   const { t } = useTranslation()
@@ -18,7 +19,7 @@ export function ConfigHelp() {
 export function ServerSetup({ initial, error, busy, onConnect, onSave }: { initial: Connection; error: string; busy: boolean; onConnect: (connection: Connection) => void; onSave: (connection: Connection) => void }) {
   const { t } = useTranslation()
   const [form, setForm] = useState(initial)
-  return <main className="setup-screen"><div className="setup-top"><div className="brand-mark"><Command size={19} /></div><strong>finesse</strong><span>{t('brandManagement')}</span><div className="setup-appearance"><ThemeSwitcher /><LanguageSwitcher /></div></div><div className="setup-layout">
+  return <main className="setup-screen"><div className="setup-top"><div className="brand-mark"><BrandLogo /></div><strong>Finesse</strong><span>{t('brandManagement')}</span><div className="setup-appearance"><ThemeSwitcher /><LanguageSwitcher /></div></div><div className="setup-layout">
     <section className="setup-intro"><div className="setup-emblem"><Server size={25} /></div><div className="setup-kicker">{t('controlPlane')}</div><h1><Trans i18nKey="setupTitle" /></h1><p>{t('setupDescription')}</p><div className="setup-checks"><div><span><Wifi size={14} /></span><div><b>{t('setupLive')}</b><small>{t('setupLiveDescription')}</small></div></div><div><span><ShieldCheck size={14} /></span><div><b>{t('setupActions')}</b><small>{t('setupActionsDescription')}</small></div></div></div></section>
     <form className="setup-form" onSubmit={e => { e.preventDefault(); onConnect(form) }}><div className="setup-form-head"><div><span className="setup-kicker">{t('addServer')}</span><h2>{t('serverConnection')}</h2></div><span className="setup-step">PLUGIN API · V1</span></div><fieldset disabled={busy}><ConnectionFields value={form} onChange={setForm} /></fieldset><ConfigHelp />{error && <div className="setup-error" role="alert"><WifiOff size={15} /><span>{error}</span></div>}<button className="primary-btn setup-submit" disabled={busy}>{busy ? <LoaderCircle className="spin" size={16} /> : <Wifi size={16} />}{t(busy ? 'verifyingConnection' : 'testAndAdd')}</button><button type="button" className="secondary-btn setup-submit" disabled={busy} onClick={() => onSave(form)}>{t('saveForLater')}</button><div className="setup-foot"><LockKeyhole size={13} />{t('localStorageNote')}</div></form>
     </div><footer className="setup-footer"><span>FINESSE</span><span>{t('setupFooter')}</span></footer></main>
