@@ -25,5 +25,7 @@
 .player-info-button:hover { color: var(--green-text); text-decoration: underline; }
 .room-message { margin-top: 18px; border-top: 1px solid var(--line-soft); padding-top: 4px; }
 .room-message h3 { color: var(--text-secondary); font-size: 12px; }
-.sidebar { overflow-y: auto; }
+.sidebar>.brand,.sidebar>.server-switcher { flex-shrink: 0; }
+.sidebar-scroll { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow-y: auto; }
+.sidebar-scroll>.nav-link { flex-shrink: 0; }
 @media(max-width:700px) { .system-grid { grid-template-columns: minmax(0,1fr); } .management-body { padding: 0 16px 16px; } .bans-panel .dashboard-panel-head { flex-wrap: wrap; } .management-search .search-box { width: 100%; } }

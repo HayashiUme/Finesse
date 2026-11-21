@@ -34,7 +34,7 @@
 | POST | `/api/v1/players/{clientId}/ban` | 当前房间内封禁；未入房返回 409 |
 | POST | `/api/v1/games/{code}/privacy` | JSON 请求体 `{"isPublic":true}` 或 `false` |
 | POST | `/api/v1/games/{code}/close` | 踢出该房间当前玩家，即清空房间 |
-| WS | `/api/v1/events?key=...` | 每三秒完整快照，连接后立即发送首个快照 |
+| WS | `/api/v1/events` | 使用上述认证子协议，每秒完整快照，连接后立即发送首个快照 |
 
 管理操作成功返回 `204 No Content`。`close` 不是结束游戏协议，也不保证操作期间新加入的玩家被清除。`ban` 不建立持久化的全服黑名单。
 

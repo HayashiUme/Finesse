@@ -19,6 +19,7 @@ public sealed record BanFeed(bool Available, IReadOnlyList<BanEntry> Entries);
 public sealed class BanService : IEventListener, IDisposable
 {
     private readonly object _gate = new();
+    private readonly object _writeGate = new();
     private readonly IEventManager _events;
     private readonly ILogger<BanService> _logger;
     private readonly string _path;
@@ -36,7 +37,7 @@ public sealed class BanService : IEventListener, IDisposable
             {
                 var entries = JsonSerializer.Deserialize<List<BanEntry>>(File.ReadAllText(_path), JsonDefaults.Options)
                     ?? throw new InvalidDataException("Invalid ban history");
-                if (entries.Count > 5000 || entries.Any(e => string.IsNullOrWhiteSpace(e.Id) ||
+                if (entries.Count > 5000 || entries.Any(e => !Guid.TryParseExact(e.Id, "N", out _) ||
                     Normalize(e.Kind, e.Value) != e.Value || e.Reason is null || e.Reason.Length > 200 || e.Reason.Any(char.IsControl)) ||
                     entries.Select(e => e.Id).Distinct().Count() != entries.Count)
                     throw new InvalidDataException("Invalid ban history");
@@ -77,24 +78,30 @@ public sealed class BanService : IEventListener, IDisposable
         var now = DateTimeOffset.UtcNow;
         var entry = new BanEntry(Guid.NewGuid().ToString("N"), request.Kind!, value, request.Reason?.Trim() ?? "",
             now, request.DurationMinutes is { } duration ? now.AddMinutes(duration) : null);
-        lock (_gate)
+        lock (_writeGate)
         {
-            var next = _entries.Where(e => IsActive(e) && !(e.Kind == entry.Kind && e.Value == value)).ToList();
+            List<BanEntry> next;
+            lock (_gate) next = _entries.Where(e => IsActive(e) && !(e.Kind == entry.Kind && e.Value == value)).ToList();
             if (next.Count >= 5000) throw new ManagementException(409, "banLimit");
             next.Add(entry);
             Save(next);
-            _entries = next;
+            lock (_gate) _entries = next;
         }
         return entry;
     }
 
     public void Remove(string id)
     {
-        lock (_gate)
+        lock (_writeGate)
         {
-            if (!_entries.Any(e => e.Id == id)) throw new ManagementException(404, "Ban not found");
-            var next = _entries.Where(e => e.Id != id).ToList();
-            Save(next); _entries = next;
+            List<BanEntry> next;
+            lock (_gate)
+            {
+                if (!_entries.Any(e => e.Id == id)) throw new ManagementException(404, "Ban not found");
+                next = _entries.Where(e => e.Id != id).ToList();
+            }
+            Save(next);
+            lock (_gate) _entries = next;
         }
     }
 

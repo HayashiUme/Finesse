@@ -268,6 +268,7 @@ const en = {
   serverBansDescription: "Block connections by IP or friend code, permanently or until a set time.",
   addServerBan: "Add server ban",
   banType: "Ban type",
+  banReason: "Ban reason",
   ipAddress: "IP address",
   friendCode: "Friend code",
   banDuration: "Duration (minutes)",

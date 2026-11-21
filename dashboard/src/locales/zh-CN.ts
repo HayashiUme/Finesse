@@ -270,6 +270,7 @@ const zhCN: Record<keyof typeof en, string> = {
   serverBansDescription: "按 IP 或好友码限制连接，支持永久或定时封禁。",
   addServerBan: "添加全服封禁",
   banType: "封禁类型",
+  banReason: "封禁原因",
   ipAddress: "IP 地址",
   friendCode: "好友码",
   banDuration: "封禁时长（分钟）",
