@@ -49,6 +49,6 @@ Returns an HPLP-compatible object with `games` and `regions`. Public rooms are i
 
 ## Welcome page
 
-The Interface page can install an HTML file at the plugin listener's `/` path; the file is stored at `Finesse/Pages/index.html`. Finesse uses a separate HTTP listener from Impostor's own web server, so this page does not replace Impostor's `/` route on its HTTP port.
+The Interface page installs an HTML file at the plugin listener's `/index` path; the file is stored at `Finesse/Pages/index.html`. The plugin root `/` does not serve this custom page.
 
 For browser clients hosted on another origin, add that exact origin to `allowedOrigins` in `finesse.json`. Keep the API listener private or behind an HTTPS reverse proxy; do not expose it directly to an untrusted network.

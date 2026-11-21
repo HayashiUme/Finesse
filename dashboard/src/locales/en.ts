@@ -451,7 +451,7 @@ const en = {
   interfaceAuthHeader: "Authentication header:",
   interfaceCorsNote: "For browser-based clients, add their exact origin to the plugin allowedOrigins setting.",
   interfaceHelloTitle: "Welcome page",
-  interfaceHelloDescription: "Import an HTML file to serve it at the Finesse plugin root URL. This does not replace Impostor’s own server root page because the plugin uses its own port.",
+  interfaceHelloDescription: "Import an HTML file to serve it at the plugin URL followed by /index. The root URL remains separate from this custom page.",
   interfaceImportHtml: "Import .html",
   interfaceHelloInstalled: "Custom page installed",
   interfaceHelloDefault: "Built-in fallback page is active",

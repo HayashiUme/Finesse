@@ -110,7 +110,7 @@ public sealed class FinesseHttpService : BackgroundService
             var isLoginRequest = context.Request.HttpMethod == "POST" &&
                 path is "/api/v1/auth/login/admin" or "/api/v1/auth/login/superadmin";
             var isExternalInterface = context.Request.HttpMethod == "GET" &&
-                path is "/" or "/v2/api/games" or "/v2/api/monitor" or "/x-api/games";
+                path is "/" or "/index" or "/v2/api/games" or "/v2/api/monitor" or "/x-api/games";
 
             if (context.Request.IsWebSocketRequest && path == "/api/v1/events")
             {
@@ -166,7 +166,7 @@ public sealed class FinesseHttpService : BackgroundService
     {
         var request = context.Request;
         var path = NormalizePath(request.Url?.AbsolutePath);
-        if (request.HttpMethod == "GET" && path == "/")
+        if (request.HttpMethod == "GET" && path == "/index")
         {
             var html = _interfaces.ReadHelloPage() ?? "<!doctype html><html lang=\"en\"><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Impostor</title><body><main><h1>Impostor server</h1><p>The server is online.</p></main></body></html>";
             await WriteTextAsync(context.Response, html, "text/html; charset=utf-8");

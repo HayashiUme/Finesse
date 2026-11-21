@@ -453,7 +453,7 @@ const zhCN: Record<keyof typeof en, string> = {
   interfaceAuthHeader: "认证请求头：",
   interfaceCorsNote: "浏览器程序需要将准确的来源地址加入插件 allowedOrigins 配置。",
   interfaceHelloTitle: "欢迎页",
-  interfaceHelloDescription: "导入 HTML 文件后，可通过 Finesse 插件自身的根 URL 访问。插件使用独立端口，因此不能替换 Impostor 原生服务端口的根页面。",
+  interfaceHelloDescription: "导入 HTML 后，可通过插件 URL 后追加 /index 访问。根 URL 与自定义欢迎页保持分开。",
   interfaceImportHtml: "导入 .html",
   interfaceHelloInstalled: "已安装自定义页面",
   interfaceHelloDefault: "当前使用内置默认页",
