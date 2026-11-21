@@ -42,12 +42,7 @@
 .plugin-name-cell { display: flex; align-items: center; gap: 9px; min-width: 160px; }
 .plugin-name-cell>svg { flex: none; color: var(--green-text); }
 .plugin-name-cell b,.plugin-name-cell small { display: block; }
-.plugin-name-cell small,.plugin-restart-note { margin-top: 4px; color: var(--muted); font: 10px 'DM Mono',monospace; overflow-wrap: anywhere; }
-.plugin-restart-note { display: block; font-family: inherit; }
-.plugin-state { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; font-size: 11px; }
-.plugin-state i { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
-.plugin-state.enabled i { background: var(--success-dot); }
-.plugin-state.removed i { background: var(--warning-text); }
+.plugin-name-cell small { margin-top: 4px; color: var(--muted); font: 10px 'DM Mono',monospace; overflow-wrap: anywhere; }
 .plugin-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
 .plugin-actions .secondary-btn,.plugin-actions .danger-btn { min-height: 30px; padding: 0 9px; font-size: 10px; }
 .plugin-protected { color: var(--muted); font-size: 10px; }
