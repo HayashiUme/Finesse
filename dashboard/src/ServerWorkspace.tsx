@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { ArrowDownToLine, ArrowUpRight, Ban, ClipboardList, Gamepad2, Globe2, LoaderCircle, LogOut, Plug, RefreshCw, Search, Settings2, ShieldCheck, Users, WifiOff, X, Download, CircleAlert, Check } from 'lucide-react'
+import { ArrowDownToLine, ArrowUpRight, Ban, ClipboardList, Gamepad2, Globe2, LoaderCircle, LogOut, Plug, RefreshCw, Search, Settings2, ShieldCheck, Users, WifiOff, X } from 'lucide-react'
 import { fetchAudit, fetchPlugins, fetchSnapshot, gameAction, playerAction } from './api'
 import { useRealtime } from './useRealtime'
 import { errorMessage, LocalizedError, type TranslationKey } from './i18n'
@@ -26,54 +26,6 @@ const auditDetails: Record<string, Extract<TranslationKey, `audit${string}`>> = 
   'Player must be in a room for a room ban': 'auditRoomRequired', 'Operation failed': 'auditFailed',
 }
 
-const releaseEndpoint = 'https://api.github.com/repos/HayashiUme/Finesse/releases'
-
-async function fetchLatestRelease(development: boolean) {
-  const response = await fetch(development ? `${releaseEndpoint}?per_page=100` : `${releaseEndpoint}/latest`, { headers: { Accept: 'application/vnd.github+json' } })
-  if (!response.ok) throw new Error(`GitHub release check failed (${response.status})`)
-  const releases = await response.json() as Array<{ tag_name: string; html_url: string; prerelease: boolean; assets: Array<{ name: string; browser_download_url: string }> }> | { tag_name: string; html_url: string; prerelease: boolean; assets: Array<{ name: string; browser_download_url: string }> }
-  return (Array.isArray(releases) ? releases.filter(release => release.prerelease) : [releases])[0]
-}
-
-function parseVersion(version: string) {
-  const normalized = version.replace(/^v/, '').split('+')[0]
-  const [core, suffix = ''] = normalized.split('-', 2)
-  return { core: core.split('.').map(part => Number(part) || 0), suffix: suffix.split('.').filter(Boolean) }
-}
-function isNewer(candidate: string, current: string) {
-  const a = parseVersion(candidate), b = parseVersion(current)
-  for (let i = 0; i < Math.max(a.core.length, b.core.length); i++) if ((a.core[i] ?? 0) !== (b.core[i] ?? 0)) return (a.core[i] ?? 0) > (b.core[i] ?? 0)
-  if (!a.suffix.length || !b.suffix.length) return !a.suffix.length && b.suffix.length > 0
-  for (let i = 0; i < Math.max(a.suffix.length, b.suffix.length); i++) {
-    if (a.suffix[i] === b.suffix[i]) continue
-    if (a.suffix[i] === undefined) return false
-    if (b.suffix[i] === undefined) return true
-    const an = Number(a.suffix[i]), bn = Number(b.suffix[i])
-    if (!Number.isNaN(an) && !Number.isNaN(bn)) return an > bn
-    return a.suffix[i] > b.suffix[i]
-  }
-  return false
-}
-
-function UpdateStatus({ release, releaseError, releasePending, pluginVersion }: { release?: Awaited<ReturnType<typeof fetchLatestRelease>>; releaseError: boolean; releasePending: boolean; pluginVersion: string }) {
-  const { t } = useTranslation()
-  if (releasePending) return <section className="update-status"><LoaderCircle className="spin" size={17} /><span>{t('checkingUpdates')}</span></section>
-  if (releaseError) return <section className="update-status update-error"><CircleAlert size={17} /><span>{t('updateCheckUnavailable')}</span></section>
-  if (!release) return <section className="update-status"><Check size={17} /><span>{t('upToDate')}</span></section>
-
-  const tagVersion = release.tag_name.replace(/^v/, '')
-  const panelUpdate = isNewer(tagVersion, __FINESSE_VERSION__)
-  const pluginRelease = release.assets.find(asset => asset.name === 'Finesse.Plugin.dll')
-  const pluginUpdate = isNewer(tagVersion, pluginVersion)
-  if (!panelUpdate && !pluginUpdate) return <section className="update-status"><Check size={17} /><span>{t('upToDate')}</span></section>
-  return <section className="update-status update-available">
-    <div className="update-title"><Download size={17} /><strong>{t('updatesAvailable')}</strong></div>
-    {panelUpdate && <div className="update-row"><span>{t('dashboardUpdate', { version: tagVersion })}</span><a href={release.html_url} target="_blank" rel="noreferrer">{t('viewRelease')}<ArrowUpRight size={13} /></a></div>}
-    {pluginUpdate && <div className="update-row"><span>{t('pluginUpdate', { version: tagVersion })}</span>{pluginRelease && <a href={pluginRelease.browser_download_url}>{t('downloadPlugin')}<Download size={13} /></a>}</div>}
-    {pluginUpdate && <p className="update-restart-note">{t('pluginRestartRequired')}</p>}
-  </section>
-}
-
 export default function ServerWorkspace({ connection, view, ...shell }: WorkspaceProps) {
   const { t, i18n } = useTranslation()
   const auth = useAuth()
@@ -93,7 +45,6 @@ export default function ServerWorkspace({ connection, view, ...shell }: Workspac
   })
   const connected = Boolean(connection && query.isSuccess)
   const audit = useQuery({ queryKey: ['audit', connection], queryFn: ({ signal }) => fetchAudit(connection, signal), enabled: connected && (view === 'audit' || view === 'dashboard'), retry: false, refetchInterval: 1000 })
-  const releases = useQuery({ queryKey: ['finesse-releases', __FINESSE_VERSION__.includes('-dev')], queryFn: ({ queryKey }) => fetchLatestRelease(queryKey[1] as boolean), enabled: connected && view === 'dashboard', staleTime: 15 * 60_000, retry: 1 })
 
   const players = query.data?.players ?? []
   const games = query.data?.games ?? []
@@ -173,10 +124,7 @@ export default function ServerWorkspace({ connection, view, ...shell }: Workspac
         {view === 'messages' && <MessagesPanel connection={connection} games={activeGames} />}
         {view === 'plugins' && <PluginsPanel connection={connection} canManage={canManagePlugins} />}
 
-        {view === 'dashboard' && <>
-          <UpdateStatus release={releases.data} releaseError={releases.isError} releasePending={releases.isPending} pluginVersion={data.pluginVersion} />
-          <DashboardHome connection={connection} data={data} audit={audit.data ?? []} auditLoading={audit.isPending} auditError={audit.isError} formatUptime={formatUptime} number={number} live={live} onPlayers={() => shell.onNavigate('players')} onGames={() => shell.onNavigate('games')} onPlugins={() => shell.onNavigate('plugins')} onAudit={() => shell.onNavigate('audit')} onRoom={setSelectedCode} />
-        </>}
+        {view === 'dashboard' && <DashboardHome connection={connection} data={data} audit={audit.data ?? []} auditLoading={audit.isPending} auditError={audit.isError} formatUptime={formatUptime} number={number} live={live} onPlayers={() => shell.onNavigate('players')} onGames={() => shell.onNavigate('games')} onPlugins={() => shell.onNavigate('plugins')} onAudit={() => shell.onNavigate('audit')} onRoom={setSelectedCode} />}
 
         {view === 'players' && <section className="stats-grid">
           <StatCard label={t('onlinePlayers')} value={number(data.onlinePlayers)} detail={t('allConnections')} icon={<Users size={18} />} accent="mint" />

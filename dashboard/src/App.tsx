@@ -86,7 +86,7 @@ function Dashboard() {
   return <>{view === 'servers' || !current
     ? <ServersPage {...shell} onRemove={server => { setError(null); setRemoving(server) }} />
     : view === 'settings'
-      ? <SettingsPage {...shell} />
+      ? <SettingsPage {...shell} connection={connection ?? undefined} />
       : !connection
         ? <LoginPage {...renderedShell} key={current.id} server={current} />
         : view === 'account'

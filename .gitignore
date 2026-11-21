@@ -17,4 +17,5 @@ finesse-reports.json.tmp
 finesse-bans.json
 finesse-bans.json.tmp
 tests/
-docs/
+docs/*
+!docs/privacy-policy.md
