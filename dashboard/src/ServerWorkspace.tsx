@@ -11,12 +11,13 @@ import ProcessGauge from './ProcessGauge'
 import ReportsPanel from './ReportsPanel'
 import { MessageComposer, MessagesPanel, ModerationPanel, PlayerDetails } from './ManagementPanels'
 import PluginsPanel from './PluginsPanel'
+import InterfacePage from './InterfacePage'
 import type { Game, Player, Snapshot, Connection } from './types'
 import './telemetry.css'
 import { useAuth } from './auth'
 
-const titles = { dashboard: 'navDashboard', players: 'titlePlayers', games: 'titleGames', audit: 'navAudit', moderation: 'navModeration', messages: 'navMessages', plugins: 'navPlugins' } as const
-const descriptions = { players: 'managePlayers', games: 'manageGames', audit: 'auditDescription', moderation: 'moderationDescription', messages: 'messagesDescription', plugins: 'pluginsDescription' } as const
+const titles = { dashboard: 'navDashboard', players: 'titlePlayers', games: 'titleGames', audit: 'navAudit', moderation: 'navModeration', messages: 'navMessages', plugins: 'navPlugins', interface: 'navInterface' } as const
+const descriptions = { players: 'managePlayers', games: 'manageGames', audit: 'auditDescription', moderation: 'moderationDescription', messages: 'messagesDescription', plugins: 'pluginsDescription', interface: 'interfacePageDescription' } as const
 const filters = [{ id: 'all', label: 'filterAll' }, { id: 'lobby', label: 'lobby' }, { id: 'playing', label: 'playing' }] as const
 type Filter = typeof filters[number]['id']
 const gameStates: Record<string, Extract<TranslationKey, `state${string}`>> = { NotStarted: 'stateWaiting', Starting: 'stateStarting', Started: 'stateStarted', Ended: 'stateEnded', Destroyed: 'stateDestroyed' }
@@ -123,6 +124,7 @@ export default function ServerWorkspace({ connection, view, ...shell }: Workspac
         {view === 'moderation' && <ModerationPanel connection={connection} />}
         {view === 'messages' && <MessagesPanel connection={connection} games={activeGames} />}
         {view === 'plugins' && <PluginsPanel connection={connection} canManage={canManagePlugins} />}
+        {view === 'interface' && <InterfacePage connection={connection} canManage={canManagePlugins} />}
 
         {view === 'dashboard' && <DashboardHome connection={connection} data={data} audit={audit.data ?? []} auditLoading={audit.isPending} auditError={audit.isError} formatUptime={formatUptime} number={number} live={live} onPlayers={() => shell.onNavigate('players')} onGames={() => shell.onNavigate('games')} onPlugins={() => shell.onNavigate('plugins')} onAudit={() => shell.onNavigate('audit')} onRoom={setSelectedCode} />}
 

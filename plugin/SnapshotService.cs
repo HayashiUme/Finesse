@@ -57,7 +57,8 @@ public sealed class SnapshotService
             host?.Name ?? "Unknown host",
             players, game.Options.Map.ToString(), game.Options.GameMode.ToString(), game.DisplayName,
             game.Code.Value, game.PublicIp.Address.ToString(), hostPlatform,
-            host?.ChatMode == QuickChatModes.QuickChatOnly, game.Options.NumImpostors, game.Options.Keywords.ToString());
+            host?.ChatMode == QuickChatModes.QuickChatOnly, game.Options.NumImpostors, game.Options.Keywords.ToString(),
+            (int)game.Options.Map, (int)game.Options.Keywords);
     }
 
     private static PlayerDto ToPlayer(Impostor.Api.Net.IClientPlayer player)

@@ -22,4 +22,5 @@ finesse-bans.json.tmp
 tests/
 docs/*
 !docs/privacy-policy.md
-!docs/dashboard-updater.md
+!docs/api-v2.md
+tools/

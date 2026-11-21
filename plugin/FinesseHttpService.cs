@@ -16,6 +16,7 @@ public sealed class FinesseHttpService : BackgroundService
     private readonly ReportService _reports;
     private readonly ManagementService _management;
     private readonly PluginManagementService? _plugins;
+    private readonly InterfaceService _interfaces;
     private readonly ILogger<FinesseHttpService> _logger;
     private readonly HttpListener _listener = new();
 
@@ -26,12 +27,14 @@ public sealed class FinesseHttpService : BackgroundService
         ManagementService management,
         ILogger<FinesseHttpService> logger,
         ReportService reports,
+        InterfaceService interfaces,
         PluginManagementService? plugins = null)
     {
         _options = options;
         _authentication = authentication;
         _snapshots = snapshots;
         _reports = reports;
+        _interfaces = interfaces;
         _management = management;
         _plugins = plugins;
         _logger = logger;
@@ -103,9 +106,11 @@ public sealed class FinesseHttpService : BackgroundService
                 return;
             }
 
-            var path = context.Request.Url?.AbsolutePath.TrimEnd('/') ?? string.Empty;
+            var path = NormalizePath(context.Request.Url?.AbsolutePath);
             var isLoginRequest = context.Request.HttpMethod == "POST" &&
                 path is "/api/v1/auth/login/admin" or "/api/v1/auth/login/superadmin";
+            var isExternalInterface = context.Request.HttpMethod == "GET" &&
+                path is "/" or "/v2/api/games" or "/v2/api/monitor" or "/x-api/games";
 
             if (context.Request.IsWebSocketRequest && path == "/api/v1/events")
             {
@@ -129,7 +134,7 @@ public sealed class FinesseHttpService : BackgroundService
                 : null;
             AuthUser? user = null;
             var credential = context.Request.Headers["X-Api-Key"];
-            if (!isLoginRequest && !TryAuthenticate(bearer, credential, out user))
+            if (!isLoginRequest && !isExternalInterface && !TryAuthenticate(bearer, credential, out user))
             {
                 await WriteErrorAsync(context.Response, HttpStatusCode.Unauthorized, "Unauthorized");
                 return;
@@ -160,8 +165,47 @@ public sealed class FinesseHttpService : BackgroundService
     private async Task RouteAsync(HttpListenerContext context, CancellationToken cancellationToken, AuthUser? user, string? token)
     {
         var request = context.Request;
-        var path = request.Url?.AbsolutePath.TrimEnd('/') ?? string.Empty;
-        if (request.HttpMethod == "POST" && path is "/api/v1/auth/login/admin" or "/api/v1/auth/login/superadmin")
+        var path = NormalizePath(request.Url?.AbsolutePath);
+        if (request.HttpMethod == "GET" && path == "/")
+        {
+            var html = _interfaces.ReadHelloPage() ?? "<!doctype html><html lang=\"en\"><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Impostor</title><body><main><h1>Impostor server</h1><p>The server is online.</p></main></body></html>";
+            await WriteTextAsync(context.Response, html, "text/html; charset=utf-8");
+        }
+        else if (request.HttpMethod == "GET" && path == "/v2/api/games")
+        {
+            RequireInterfaceKey(request, "games");
+            await WriteJsonAsync(context.Response, BuildPublicGamesResponse(_snapshots.GetSnapshot()));
+        }
+        else if (request.HttpMethod == "GET" && path == "/v2/api/monitor")
+        {
+            RequireInterfaceKey(request, "monitor");
+            var snapshot = _snapshots.GetSnapshot();
+            var process = System.Diagnostics.Process.GetCurrentProcess();
+            var uptime = DateTimeOffset.UtcNow - process.StartTime.ToUniversalTime();
+            var serverInfo = _snapshots.GetServerInfo();
+            await WriteJsonAsync(context.Response, new
+            {
+                status = "running",
+                timestamp = DateTimeOffset.UtcNow.ToString("o"),
+                uptimeSeconds = (long)uptime.TotalSeconds,
+                uptimeDisplay = $"{uptime.Days}d {uptime.Hours}h {uptime.Minutes}m",
+                version = serverInfo.ServerVersion ?? "unknown",
+                runtime = System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription,
+                platform = System.Runtime.InteropServices.RuntimeInformation.OSDescription,
+                processors = Environment.ProcessorCount,
+                memoryMb = process.WorkingSet64 / 1024 / 1024,
+                gameCount = snapshot.Games.Count,
+                playerCount = snapshot.OnlinePlayers,
+                activeConnections = snapshot.OnlinePlayers,
+                games = snapshot.Games.Select(game => new { code = game.Code, state = game.State, map = game.Map, playerCount = game.PlayerCount, host = game.HostName ?? "(none)" }),
+            });
+        }
+        else if (request.HttpMethod == "GET" && path == "/x-api/games")
+        {
+            if (!_interfaces.GetXApiSettings().Enabled) throw new ManagementException(503, "xApiDisabled");
+            await WriteJsonAsync(context.Response, _interfaces.BuildXApiGames(_snapshots.GetSnapshot()));
+        }
+        else if (request.HttpMethod == "POST" && path is "/api/v1/auth/login/admin" or "/api/v1/auth/login/superadmin")
         {
             var body = await ReadJsonAsync<LoginRequest>(request, 16_384, cancellationToken);
             var ip = ResolveClientAddress(request)?.ToString() ?? "unknown";
@@ -252,6 +296,49 @@ public sealed class FinesseHttpService : BackgroundService
         else if (request.HttpMethod == "GET" && path == "/api/v1/plugins")
         {
             await WriteJsonAsync(context.Response, _plugins?.GetPlugins() ?? []);
+        }
+        else if (request.HttpMethod == "GET" && path == "/api/v1/interface")
+        {
+            RequireSuperAdmin(user);
+            await WriteJsonAsync(context.Response, _interfaces.GetSettings());
+        }
+        else if (request.HttpMethod == "GET" && path == "/api/v1/interface/x-api/preview")
+        {
+            RequireSuperAdmin(user);
+            await WriteJsonAsync(context.Response, _interfaces.BuildXApiGames(_snapshots.GetSnapshot()));
+        }
+        else if (request.HttpMethod == "PUT" && path == "/api/v1/interface/x-api")
+        {
+            RequireSuperAdmin(user);
+            var body = await ReadJsonAsync<XApiSettingsDto>(request, 16_384, cancellationToken);
+            await WriteJsonAsync(context.Response, _interfaces.UpdateXApi(body));
+        }
+        else if (request.HttpMethod == "POST" && path == "/api/v1/interface/keys")
+        {
+            RequireSuperAdmin(user);
+            var body = await ReadJsonAsync<CreateInterfaceKeyRequest>(request, 16_384, cancellationToken);
+            await WriteJsonAsync(context.Response, _interfaces.CreateApiKey(body.Name, body.Scopes));
+        }
+        else if (request.HttpMethod == "DELETE" && path.StartsWith("/api/v1/interface/keys/", StringComparison.Ordinal))
+        {
+            RequireSuperAdmin(user);
+            _interfaces.DeleteApiKey(Uri.UnescapeDataString(path["/api/v1/interface/keys/".Length..]));
+            context.Response.StatusCode = (int)HttpStatusCode.NoContent;
+            context.Response.Close();
+        }
+        else if (request.HttpMethod == "PUT" && path == "/api/v1/interface/hello")
+        {
+            RequireSuperAdmin(user);
+            var body = await ReadJsonAsync<HelloPageRequest>(request, 4_000_000, cancellationToken);
+            _interfaces.SaveHelloPage(body.Html);
+            await WriteJsonAsync(context.Response, _interfaces.GetSettings());
+        }
+        else if (request.HttpMethod == "DELETE" && path == "/api/v1/interface/hello")
+        {
+            RequireSuperAdmin(user);
+            _interfaces.SaveHelloPage(null);
+            context.Response.StatusCode = (int)HttpStatusCode.NoContent;
+            context.Response.Close();
         }
         else if (request.HttpMethod == "POST" && TryParsePluginAction(path, out var pluginId, out var pluginAction))
         {
@@ -436,6 +523,41 @@ public sealed class FinesseHttpService : BackgroundService
         if (user?.Role != "superadmin") throw new ManagementException(403, "superAdminRequired");
     }
 
+    private void RequireInterfaceKey(HttpListenerRequest request, string scope)
+    {
+        if (!_interfaces.IsAuthorized(request.Headers["X-Api-Key"], scope))
+            throw new ManagementException(401, "interfaceApiKeyInvalid");
+    }
+
+    private static object BuildPublicGamesResponse(SnapshotDto snapshot)
+    {
+        var games = snapshot.Games.Select(game =>
+        {
+            var host = game.Players.FirstOrDefault(player => player.IsHost);
+            return new
+            {
+                code = game.Code,
+                codeInt = game.GameId,
+                state = game.State,
+                isPublic = game.IsPublic,
+                playerCount = game.PlayerCount,
+                maxPlayers = game.MaxPlayers,
+                map = game.Map,
+                impostors = game.ImpostorCount,
+                host = game.HostName ?? "UnknownName",
+                hostFriendCode = host?.FriendCode ?? "UnknownHostFriendCode",
+                players = game.Players.Select(player => new
+                {
+                    name = player.Name,
+                    friendCode = player.FriendCode ?? "UnknownFriendCode",
+                    isHost = player.IsHost,
+                    platform = player.Platform ?? "UnknownPlatform",
+                }),
+            };
+        }).ToArray();
+        return new { totalGames = games.Length, totalPlayers = games.Sum(game => game.playerCount), games };
+    }
+
     private static async Task<T> ReadJsonAsync<T>(HttpListenerRequest request, int maxBytes, CancellationToken cancellationToken)
     {
         if (request.ContentLength64 > maxBytes) throw new ManagementException(413, "requestTooLarge");
@@ -468,6 +590,12 @@ public sealed class FinesseHttpService : BackgroundService
                 (bytes[0] == 100 && (bytes[1] & 0xc0) == 64);
         }
         return bytes.Length == 16 && (bytes[0] & 0xfe) == 0xfc;
+    }
+
+    private static string NormalizePath(string? path)
+    {
+        var normalized = path?.TrimEnd('/');
+        return string.IsNullOrEmpty(normalized) ? "/" : normalized;
     }
 
     private static IPAddress? ResolveClientAddress(HttpListenerRequest request)
@@ -546,6 +674,15 @@ public sealed class FinesseHttpService : BackgroundService
         response.Close();
     }
 
+    private static async Task WriteTextAsync(HttpListenerResponse response, string value, string contentType)
+    {
+        response.ContentType = contentType;
+        var bytes = Encoding.UTF8.GetBytes(value);
+        response.ContentLength64 = bytes.Length;
+        await response.OutputStream.WriteAsync(bytes);
+        response.Close();
+    }
+
     private static Task WriteErrorAsync(HttpListenerResponse response, HttpStatusCode status, string message)
     {
         response.StatusCode = (int)status;
@@ -555,4 +692,6 @@ public sealed class FinesseHttpService : BackgroundService
     private sealed record LoginRequest(string? ApiKey, string? Username, string? Password, string? CaptchaId, string? CaptchaAnswer);
     private sealed record CreateUserRequest(string? Username, string? Password, string? Avatar);
     private sealed record AvatarRequest(string? Avatar);
+    private sealed record CreateInterfaceKeyRequest(string? Name, string[]? Scopes);
+    private sealed record HelloPageRequest(string? Html);
 }

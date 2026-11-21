@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Check, ChevronDown, ClipboardList, Gamepad2, LayoutDashboard, LogOut, Megaphone, Plug, Plus, RefreshCw, Server, Settings2, ShieldCheck, UserRoundCog, Users } from 'lucide-react'
+import { Check, ChevronDown, ClipboardList, Gamepad2, LayoutDashboard, LogOut, Megaphone, Plug, Plus, RefreshCw, Server, Settings2, ShieldCheck, UserRoundCog, Users, Workflow } from 'lucide-react'
 import { ConfigHelp, Modal } from './ConnectionUI'
 import type { AppView, SavedServer, WorkspaceView } from './types'
 import { useAuth } from './auth'
@@ -21,6 +21,7 @@ const navigation = [
   { id: 'plugins', label: 'navPlugins', icon: Plug },
   { id: 'messages', label: 'navMessages', icon: Megaphone },
   { id: 'audit', label: 'navAudit', icon: ClipboardList },
+  { id: 'interface', label: 'navInterface', icon: Workflow },
 ] as const
 
 export default function AppShell({ children, live, connected, onRefresh, ...props }: ShellProps & {

@@ -121,7 +121,25 @@ const authErrorKeys = {
   kickReasonInvalid: 'kickReasonInvalid', pluginManagerUnavailable: 'pluginManagerUnavailable', pluginNotFound: 'pluginNotFound',
   pluginSelfManagementBlocked: 'pluginSelfManagementBlocked', pluginFileMissing: 'pluginFileMissing',
   pluginInstanceUnavailable: 'pluginInstanceUnavailable', pluginFileUnavailable: 'pluginFileUnavailable', pluginDeleteFailed: 'pluginDeleteFailed',
+  interfaceKeyNameInvalid: 'interfaceKeyNameInvalid', interfaceKeyScopesInvalid: 'interfaceKeyScopesInvalid',
+  interfaceKeyLimitReached: 'interfaceKeyLimitReached', interfaceKeyNotFound: 'errorNotFound',
+  xApiSettingsInvalid: 'xApiSettingsInvalid', helloPageInvalid: 'helloPageInvalid', interfaceStoreUnavailable: 'interfaceStoreUnavailable',
 } as const
+export type InterfaceApiKey = { id: string; name: string; prefix: string; scopes: string[]; createdAt: string }
+export type XApiSettings = { enabled: boolean; includePrivateGames: boolean; regionId: string; regionName: string; regionUrl: string; helloPageEnabled: boolean }
+export type InterfaceSettings = { apiKeys: InterfaceApiKey[]; xApi: XApiSettings; helloPageEnabled: boolean }
+export type CreatedInterfaceApiKey = { key: InterfaceApiKey; secret: string }
+export const fetchInterfaceSettings = (connection: Connection, signal?: AbortSignal) => getJson<InterfaceSettings>(connection, '/api/v1/interface', signal)
+export const fetchXApiPreview = (connection: Connection, signal?: AbortSignal) => getJson<unknown>(connection, '/api/v1/interface/x-api/preview', signal)
+export const createInterfaceApiKey = async (connection: Connection, name: string, scopes: string[]) =>
+  JSON.parse(await request(connection, '/api/v1/interface/keys', { name, scopes }, true)) as CreatedInterfaceApiKey
+export const deleteInterfaceApiKey = (connection: Connection, id: string) => request(connection, `/api/v1/interface/keys/${encodeURIComponent(id)}`, undefined, 'DELETE')
+export const updateXApiSettings = async (connection: Connection, settings: XApiSettings) =>
+  JSON.parse(await request(connection, '/api/v1/interface/x-api', settings, 'PUT')) as XApiSettings
+export const saveHelloPage = async (connection: Connection, html: string) =>
+  JSON.parse(await request(connection, '/api/v1/interface/hello', { html }, 'PUT')) as InterfaceSettings
+export const deleteHelloPage = (connection: Connection) => request(connection, '/api/v1/interface/hello', undefined, 'DELETE')
+
 export class LoginError extends Error {
   constructor(public code: string, public challenge?: AuthChallenge, public retryAfterSeconds = 0) { super(code) }
 }
