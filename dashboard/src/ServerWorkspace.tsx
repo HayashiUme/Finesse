@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { Activity, ArrowDownToLine, ArrowUpRight, Ban, ClipboardList, Gamepad2, Globe2, LoaderCircle, LogOut, RefreshCw, Search, Settings2, ShieldCheck, Users, WifiOff, X } from 'lucide-react'
+import { ArrowDownToLine, ArrowUpRight, Ban, ClipboardList, Gamepad2, Globe2, LoaderCircle, LogOut, RefreshCw, Search, Settings2, ShieldCheck, Users, WifiOff, X } from 'lucide-react'
 import { fetchAudit, fetchSnapshot, gameAction, playerAction } from './api'
 import { useRealtime } from './useRealtime'
 import { errorMessage, LocalizedError, type TranslationKey } from './i18n'
@@ -10,15 +10,17 @@ import { Modal } from './ConnectionUI'
 import ProcessGauge from './ProcessGauge'
 import ReportsPanel from './ReportsPanel'
 import { MessageComposer, MessagesPanel, ModerationPanel, PlayerDetails, ServerInfoPanel } from './ManagementPanels'
+import PluginsPanel from './PluginsPanel'
 import type { Game, Player, Snapshot, Connection } from './types'
 import './telemetry.css'
+import { useAuth } from './auth'
 
-const titles = { dashboard: 'navDashboard', players: 'titlePlayers', games: 'titleGames', audit: 'navAudit', moderation: 'navModeration', messages: 'navMessages', system: 'navSystem' } as const
-const descriptions = { players: 'managePlayers', games: 'manageGames', audit: 'auditDescription', moderation: 'moderationDescription', messages: 'messagesDescription', system: 'systemDescription' } as const
+const titles = { dashboard: 'navDashboard', players: 'titlePlayers', games: 'titleGames', audit: 'navAudit', moderation: 'navModeration', messages: 'navMessages', system: 'navSystem', plugins: 'navPlugins' } as const
+const descriptions = { players: 'managePlayers', games: 'manageGames', audit: 'auditDescription', moderation: 'moderationDescription', messages: 'messagesDescription', system: 'systemDescription', plugins: 'pluginsDescription' } as const
 const filters = [{ id: 'all', label: 'filterAll' }, { id: 'lobby', label: 'lobby' }, { id: 'playing', label: 'playing' }] as const
 type Filter = typeof filters[number]['id']
 const gameStates: Record<string, Extract<TranslationKey, `state${string}`>> = { NotStarted: 'stateWaiting', Starting: 'stateStarting', Started: 'stateStarted', Ended: 'stateEnded', Destroyed: 'stateDestroyed' }
-const actionNames: Record<string, Extract<TranslationKey, `action${string}`>> = { login: 'actionPanelLogin', kick: 'actionKick', ban: 'actionBan', privacy: 'actionPrivacy', close: 'actionClose', serverBan: 'actionServerBan', unban: 'actionUnban', broadcast: 'actionBroadcast', message: 'actionMessage' }
+const actionNames: Record<string, Extract<TranslationKey, `action${string}`>> = { login: 'actionPanelLogin', kick: 'actionKick', ban: 'actionBan', privacy: 'actionPrivacy', close: 'actionClose', serverBan: 'actionServerBan', unban: 'actionUnban', broadcast: 'actionBroadcast', message: 'actionMessage', pluginEnable: 'actionPluginEnable', pluginDisable: 'actionPluginDisable', pluginDelete: 'actionPluginDelete' }
 const auditDetails: Record<string, Extract<TranslationKey, `audit${string}`>> = {
   Completed: 'auditCompleted', 'Player not found': 'auditPlayerMissing', 'Room not found': 'auditRoomMissing',
   'Player must be in a room for a room ban': 'auditRoomRequired', 'Operation failed': 'auditFailed',
@@ -26,10 +28,13 @@ const auditDetails: Record<string, Extract<TranslationKey, `audit${string}`>> = 
 
 export default function ServerWorkspace({ connection, view, ...shell }: WorkspaceProps) {
   const { t, i18n } = useTranslation()
+  const auth = useAuth()
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<Filter>('all')
   const [selectedCode, setSelectedCode] = useState<string | null>(null)
   const [selectedPlayerId, setSelectedPlayerId] = useState<number | null>(null)
+  const [kickTarget, setKickTarget] = useState<Player | null>(null)
+  const [kickReason, setKickReason] = useState('')
   const [pending, setPending] = useState(false)
   const [notice, setNotice] = useState<Error | null>(null)
   const queryClient = useQueryClient()
@@ -45,6 +50,7 @@ export default function ServerWorkspace({ connection, view, ...shell }: Workspac
   const games = query.data?.games ?? []
   const selectedGame = games.find(g => g.code === selectedCode)
   const selectedPlayer = players.find(p => p.clientId === selectedPlayerId)
+  const canManagePlugins = auth.sessions[connection.id]?.user.role === 'superadmin'
   const number = (value: number) => new Intl.NumberFormat(i18n.resolvedLanguage).format(value)
   const filteredPlayers = useMemo(() => players.filter(p => [p.name, p.clientId, p.gameCode, p.address, p.friendCode, p.platform].join(' ').toLowerCase().includes(search.toLowerCase())), [players, search])
   const filteredGames = useMemo(() => games.filter(g => (filter === 'all' || (filter === 'playing' ? g.state === 'Started' : g.state === 'NotStarted')) && `${g.code} ${g.hostName ?? ''}`.toLowerCase().includes(view === 'games' ? search.toLowerCase() : '')), [games, filter, search, view])
@@ -72,9 +78,21 @@ export default function ServerWorkspace({ connection, view, ...shell }: Workspac
 
   function moderate(player: Player, action: 'kick' | 'ban') {
     if (!connected || !connection || pending) return
-    if (window.confirm(t(action === 'kick' ? 'confirmKick' : 'confirmBan', { name: player.name }))) {
-      void perform(() => playerAction(connection, player.clientId, action), new LocalizedError(action === 'kick' ? 'kickedPlayer' : 'bannedPlayer', { name: player.name }))
+    if (action === 'kick') {
+      setKickTarget(player)
+      setKickReason('')
+      return
     }
+    if (window.confirm(t('confirmBan', { name: player.name }))) {
+      void perform(() => playerAction(connection, player.clientId, action), new LocalizedError('bannedPlayer', { name: player.name }))
+    }
+  }
+
+  async function submitKick(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!kickTarget) return
+    await perform(() => playerAction(connection, kickTarget.clientId, 'kick', kickReason.trim()), new LocalizedError('kickedPlayer', { name: kickTarget.name }))
+    setKickTarget(null)
   }
 
   function manageGame(game: Game, action: 'privacy' | 'close') {
@@ -104,14 +122,13 @@ export default function ServerWorkspace({ connection, view, ...shell }: Workspac
         {view === 'moderation' && <ModerationPanel connection={connection} />}
         {view === 'messages' && <MessagesPanel connection={connection} games={games} />}
         {view === 'system' && <ServerInfoPanel connection={connection} />}
+        {view === 'plugins' && <PluginsPanel connection={connection} canManage={canManagePlugins} />}
 
         {view === 'dashboard' && <DashboardHome connection={connection} data={data} audit={audit.data ?? []} auditLoading={audit.isPending} auditError={audit.isError} formatUptime={formatUptime} number={number} live={live} onPlayers={() => shell.onNavigate('players')} onGames={() => shell.onNavigate('games')} onAudit={() => shell.onNavigate('audit')} onRoom={setSelectedCode} />}
 
         {view === 'players' && <section className="stats-grid">
           <StatCard label={t('onlinePlayers')} value={number(data.onlinePlayers)} detail={t('allConnections')} icon={<Users size={18} />} accent="mint" />
           <StatCard label={t('activeGames')} value={number(data.activeGames)} detail={t('totalGames', { count: data.totalGames })} icon={<Gamepad2 size={18} />} accent="lilac" />
-          <StatCard label={t('uptime')} value={formatUptime(data.uptimeSeconds)} detail={t('uptimeDescription')} icon={<Activity size={18} />} accent="amber" compact />
-          <StatCard label={t('pluginVersion')} value={`v${data.pluginVersion}`} detail={t('apiVersion')} icon={<ShieldCheck size={18} />} accent="blue" compact />
         </section>}
 
         {view === 'players' && <section className="section-block">
@@ -136,6 +153,7 @@ export default function ServerWorkspace({ connection, view, ...shell }: Workspac
     {selectedCode && <Modal title={t('roomTitle', { code: selectedCode })} onClose={() => setSelectedCode(null)}>{selectedGame ? <><div className="room-detail"><span>{gameStates[selectedGame.state] ? t(gameStates[selectedGame.state]) : selectedGame.state}</span><span>{t('roomPlayers', { count: selectedGame.playerCount, max: selectedGame.maxPlayers })}</span><span>{t(selectedGame.isPublic ? 'publicRoom' : 'privateRoom')}</span><span>{selectedGame.map}</span><span>{selectedGame.mode}</span></div><div className="room-player-list">{selectedGame.players.map(p => <div key={p.clientId}><b>{p.name}</b><span>{p.isHost ? t('host') : `#${p.clientId}`}</span><button className="secondary-btn" disabled={pending} onClick={() => moderate(p, 'kick')}>{t('kick')}</button></div>)}</div><div className="modal-actions"><button className="secondary-btn" disabled={pending} onClick={() => manageGame(selectedGame, 'privacy')}>{t(selectedGame.isPublic ? 'makePrivate' : 'makePublic')}</button><button className="danger-btn" disabled={pending} onClick={() => manageGame(selectedGame, 'close')}>{t('clearRoom')}</button></div><p className="modal-copy">{t('clearRoomNote')}</p><div className="room-message"><h3>{t('sendRoomMessage')}</h3><MessageComposer key={selectedGame.code} connection={connection} code={selectedGame.code} /></div></> : <div className="empty-state">{t('roomOffline')}</div>}</Modal>}
 
     {selectedPlayerId !== null && <Modal title={t('playerDetails')} onClose={() => setSelectedPlayerId(null)}>{selectedPlayer ? <PlayerDetails key={selectedPlayerId} player={selectedPlayer} connection={connection} /> : <p className="modal-copy">{t('playerOffline')}</p>}</Modal>}
+    {kickTarget && <Modal title={t('kickPlayerTitle', { name: kickTarget.name })} onClose={() => { if (!pending) setKickTarget(null) }}><form className="kick-form" onSubmit={event => void submitKick(event)}><label>{t('kickReason')}<textarea autoFocus maxLength={200} rows={3} value={kickReason} onChange={event => setKickReason(event.target.value)} placeholder={t('kickReasonOptional')} /><small>{t('kickReasonHelp')}</small></label><div className="modal-actions"><button type="button" className="secondary-btn" disabled={pending} onClick={() => setKickTarget(null)}>{t('cancel')}</button><button className="danger-btn" disabled={pending}>{pending ? <LoaderCircle className="spin" size={15} /> : <LogOut size={15} />}{t(pending ? 'saving' : 'kickPlayer')}</button></div></form></Modal>}
     {notice && <div className="toast" role="status"><span>{errorMessage(notice)}</span><button className="icon-btn" title={t('dismiss')} aria-label={t('dismiss')} onClick={() => setNotice(null)}><X size={15} /></button></div>}
   </AppShell>
 }
@@ -151,7 +169,7 @@ function DashboardHome({ connection, data, audit, auditLoading, auditError, form
   const lobbyPlayers = data.onlinePlayers - activePlayers
   const visibleGames = data.games.slice(0, 5)
   return <div className="dashboard-home">
-    <section className="dashboard-server-strip"><div className="dashboard-server-status"><span className="server-dot" /><div><b>{t('serverOnline')}</b><small>{connection.name}</small></div></div><div className="dashboard-runtime"><span>{t('uptime')}</span><b>{formatUptime(data.uptimeSeconds)}</b></div><div className="dashboard-link-status"><span className="pulse-mini" />{t(live ? 'live' : 'polling')}</div></section>
+    <section className="dashboard-server-strip"><div className="dashboard-server-status"><span className="server-dot" /><div><b>{t('serverOnline')}</b><small>{connection.name}</small></div></div><div className="dashboard-runtime"><span>{t('uptime')}</span><b>{formatUptime(data.uptimeSeconds)}</b></div><div className="dashboard-runtime dashboard-plugin-version"><span>{t('pluginVersion')}</span><b>v{data.pluginVersion}</b></div><div className="dashboard-link-status"><span className="pulse-mini" />{t(live ? 'live' : 'polling')}</div></section>
     <section className="dashboard-metrics" aria-label={t('dashboardMetrics')}>
       <button className="dashboard-metric accent-mint" onClick={onPlayers}><span className="dashboard-metric-icon"><Users size={18} /></span><b>{number(data.onlinePlayers)}</b><strong>{t('onlinePlayers')}</strong><small>{t('dashboardPlayerSplit', { lobby: number(lobbyPlayers), playing: number(activePlayers) })}</small></button>
       <button className="dashboard-metric accent-lilac" onClick={onGames}><span className="dashboard-metric-icon"><Gamepad2 size={18} /></span><b>{number(data.activeGames)}</b><strong>{t('activeGames')}</strong><small>{t('dashboardRoomsTotal', { count: data.totalGames })}</small></button>

@@ -1,5 +1,5 @@
 import { LocalizedError } from './i18n'
-import type { AuditEntry, Connection, Snapshot, AuthUser, AuthChallenge, LoginResponse, ManagedUser, ReportFeed, BanFeed, BanRequest, CommandResult, ServerInfo } from './types'
+import type { AuditEntry, Connection, Snapshot, AuthUser, AuthChallenge, LoginResponse, ManagedUser, ReportFeed, BanFeed, BanRequest, CommandResult, ServerInfo, PluginInfo } from './types'
 
 export function normalizeConnection(value: Connection, enforceHttps = true): Connection {
   const name = value.name.trim()
@@ -95,8 +95,8 @@ export async function fetchSnapshot(connection: Connection, signal?: AbortSignal
   return snapshot
 }
 
-export async function playerAction(connection: Connection, id: number, action: 'kick' | 'ban') {
-  await request(connection, `/api/v1/players/${id}/${action}`, undefined, true)
+export async function playerAction(connection: Connection, id: number, action: 'kick' | 'ban', reason?: string) {
+  await request(connection, `/api/v1/players/${id}/${action}`, action === 'kick' ? { reason: reason ?? '' } : undefined, true)
 }
 
 export async function gameAction(connection: Connection, code: string, action: 'privacy' | 'close', isPublic?: boolean) {
@@ -118,6 +118,9 @@ const authErrorKeys = {
   usernameInvalid: 'usernameInvalid', passwordPolicy: 'passwordPolicy', usernameTaken: 'usernameTaken',
   userLimitReached: 'userLimitReached', avatarInvalid: 'avatarInvalid', accountStoreUnavailable: 'accountStoreUnavailable',
   superAdminRequired: 'superAdminRequired', userNotFound: 'errorNotFound', sessionExpired: 'errorUnauthorized',
+  kickReasonInvalid: 'kickReasonInvalid', pluginManagerUnavailable: 'pluginManagerUnavailable', pluginNotFound: 'pluginNotFound',
+  pluginSelfManagementBlocked: 'pluginSelfManagementBlocked', pluginFileMissing: 'pluginFileMissing',
+  pluginInstanceUnavailable: 'pluginInstanceUnavailable', pluginFileUnavailable: 'pluginFileUnavailable', pluginDeleteFailed: 'pluginDeleteFailed',
 } as const
 export class LoginError extends Error {
   constructor(public code: string, public challenge?: AuthChallenge, public retryAfterSeconds = 0) { super(code) }
@@ -141,3 +144,8 @@ export const addBan = async (connection: Connection, ban: BanRequest): Promise<C
 export const removeBan = (connection: Connection, id: string) => request(connection, '/api/v1/bans/' + encodeURIComponent(id), undefined, 'DELETE')
 export const sendMessage = async (connection: Connection, message: string, code?: string): Promise<CommandResult> => JSON.parse(await request(connection, code ? '/api/v1/games/' + encodeURIComponent(code) + '/message' : '/api/v1/broadcast', { message }, true))
 export const fetchServerInfo = (connection: Connection, signal?: AbortSignal) => getJson<ServerInfo>(connection, '/api/v1/server', signal)
+export const fetchPlugins = (connection: Connection, signal?: AbortSignal) => getJson<PluginInfo[]>(connection, '/api/v1/plugins', signal)
+export const setPluginEnabled = async (connection: Connection, id: string, enabled: boolean) =>
+  JSON.parse(await request(connection, `/api/v1/plugins/${encodeURIComponent(id)}/${enabled ? 'enable' : 'disable'}`, {}, true)) as PluginInfo
+export const deletePlugin = async (connection: Connection, id: string) =>
+  JSON.parse(await request(connection, `/api/v1/plugins/${encodeURIComponent(id)}`, undefined, 'DELETE')) as PluginInfo

@@ -21,6 +21,7 @@ public sealed class AuthenticationService
     private static readonly Regex UsernamePattern = new("^[A-Za-z0-9_.-]{3,32}$", RegexOptions.CultureInvariant);
     private readonly object _gate = new();
     private readonly string _storePath;
+    private readonly IDataStore<UserStore> _dataStore;
     private readonly string _apiKey;
     private readonly Dictionary<string, SessionState> _sessions = new(StringComparer.Ordinal);
     private readonly Dictionary<string, FailureState> _failures = new(StringComparer.OrdinalIgnoreCase);
@@ -31,8 +32,9 @@ public sealed class AuthenticationService
     public AuthenticationService(FinesseOptions options, string? storePath = null)
     {
         _apiKey = options.ApiKey;
-        _storePath = storePath ?? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "finesse-users.json");
-        _store = LoadStore(_storePath);
+        _storePath = storePath ?? FinesseDataPaths.GetFile("accounts.json", "finesse-users.json", AppDomain.CurrentDomain.BaseDirectory);
+        _dataStore = new JsonFileDataStore<UserStore>(_storePath, writeIndented: true);
+        _store = LoadStore(_dataStore, _storePath);
     }
 
     public AuthLoginResult LoginSuperAdmin(string? apiKey, string ip, string? challengeId, string? challengeAnswer)
@@ -280,27 +282,26 @@ public sealed class AuthenticationService
         if (!valid) throw new ManagementException(400, "avatarInvalid");
     }
 
-    private static UserStore LoadStore(string path)
+    private static UserStore LoadStore(IDataStore<UserStore> dataStore, string path)
     {
-        if (!File.Exists(path)) return new UserStore();
-        try { return JsonSerializer.Deserialize<UserStore>(File.ReadAllText(path), JsonDefaults.Options) ?? new UserStore(); }
-        catch (JsonException ex) { throw new InvalidOperationException($"Cannot read Finesse account store '{path}': invalid JSON.", ex); }
+        try { return dataStore.Load(new UserStore()); }
+        catch (Exception ex) when (ex is JsonException or InvalidDataException)
+        {
+            throw new InvalidOperationException($"Cannot read Finesse account store '{path}': invalid JSON.", ex);
+        }
     }
 
     private void SaveStore(UserStore next)
     {
-        var temp = _storePath + "." + Guid.NewGuid().ToString("N") + ".tmp";
         try
         {
-            File.WriteAllText(temp, JsonSerializer.Serialize(next, new JsonSerializerOptions(JsonDefaults.Options) { WriteIndented = true }));
-            File.Move(temp, _storePath, true);
+            _dataStore.Save(next);
             _store = next;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             throw new ManagementException(500, "accountStoreUnavailable");
         }
-        finally { if (File.Exists(temp)) File.Delete(temp); }
     }
 
     private sealed record SessionState(DateTimeOffset ExpiresAt, AuthUser User);

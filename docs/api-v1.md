@@ -29,9 +29,13 @@
 | GET | `/api/v1/overview` | 总览对象 |
 | GET | `/api/v1/games` | 房间数组 |
 | GET | `/api/v1/players` | 全部已连接玩家数组，包括未入房客户端 |
-| GET | `/api/v1/audit` | 最近最多 200 条管理操作，较新记录在前 |
-| POST | `/api/v1/players/{clientId}/kick` | 踢出玩家；未入房则断开客户端 |
+| GET | `/api/v1/audit` | 最近最多 5,000 条持久化管理操作，较新记录在前 |
+| POST | `/api/v1/players/{clientId}/kick` | `{reason?}` 踢出原因最多 200 字；未入房则断开客户端 |
 | POST | `/api/v1/players/{clientId}/ban` | 当前房间内封禁；未入房返回 409 |
+| GET | `/api/v1/plugins` | 已加载插件及其基本信息 |
+| POST | `/api/v1/plugins/{id}/enable` | 启用插件实例，仅超级管理员；仅当前运行周期有效 |
+| POST | `/api/v1/plugins/{id}/disable` | 停用插件实例，仅超级管理员；仅当前运行周期有效 |
+| DELETE | `/api/v1/plugins/{id}` | 停用并删除插件 DLL，仅超级管理员；重启后完成移除 |
 | POST | `/api/v1/games/{code}/privacy` | JSON 请求体 `{"isPublic":true}` 或 `false` |
 | POST | `/api/v1/games/{code}/close` | 踢出该房间当前玩家，即清空房间 |
 | WS | `/api/v1/events` | 使用上述认证子协议，每秒完整快照，连接后立即发送首个快照 |
@@ -61,7 +65,7 @@
 
 房间字段：`code:string`、`state:string`、`playerCount:number`、`maxPlayers:number`、`isPublic:boolean`、`hostName:string|null`、`players:Player[]`。状态沿用 Impostor GameStates 名称，例如 `NotStarted`、`Starting`、`Started`、`Ended`、`Destroyed`。
 
-审计字段：`timestamp`（UTC ISO 时间）、`action`（login/kick/ban/privacy/close/serverBan/unban/broadcast/message）、`target`（用户名及 IP、客户端 ID、封禁目标或房间码）、`success:boolean`、`detail:string`。登录成功与失败均记录；刷新页面仅恢复会话，不新增登录记录。记录同时写服务器日志，内存记录在重启后清空。消息正文不写入操作记录。
+审计字段：`timestamp`（UTC ISO 时间）、`action`（login/kick/ban/privacy/close/serverBan/unban/broadcast/message/pluginEnable/pluginDisable/pluginDelete）、`target`（用户名及 IP、客户端 ID、封禁目标或房间码）、`success:boolean`、`detail:string`。登录成功与失败均记录；刷新页面仅恢复会话，不新增登录记录。最多保存 5,000 条，重启后继续显示。消息正文不写入操作记录；踢出原因会包含在该条审计详情中。
 
 WebSocket 消息：
 
@@ -100,7 +104,7 @@ WebSocket 消息：
 | 500 | 内部错误，详情写服务器日志 |
 | 503 | 管理队列已满或正在关闭 |
 
-本版支持超级管理员及普通管理员、登录失败限制和会话撤销。操作记录不单独持久化；账户、封禁和举报分别保存。数据源可能在多个查询之间变化，快照不提供跨玩家与房间的事务一致性保证。
+账号、举报、全服封禁与审计 JSON 文件保存在 Impostor 可执行文件旁的 `Finesse/` 目录。首次升级时会迁移旧版根目录中的 `finesse-users.json`、`finesse-reports.json` 和 `finesse-bans.json` 文件。数据访问通过存储接口隔离，当前仅实现 JSON 文件存储。数据源可能在多个查询之间变化，快照不提供跨玩家与房间的事务一致性保证。
 
 ## 新增管理接口
 

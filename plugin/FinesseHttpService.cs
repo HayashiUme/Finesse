@@ -15,6 +15,7 @@ public sealed class FinesseHttpService : BackgroundService
     private readonly SnapshotService _snapshots;
     private readonly ReportService _reports;
     private readonly ManagementService _management;
+    private readonly PluginManagementService? _plugins;
     private readonly ILogger<FinesseHttpService> _logger;
     private readonly HttpListener _listener = new();
 
@@ -24,13 +25,15 @@ public sealed class FinesseHttpService : BackgroundService
         SnapshotService snapshots,
         ManagementService management,
         ILogger<FinesseHttpService> logger,
-        ReportService reports)
+        ReportService reports,
+        PluginManagementService? plugins = null)
     {
         _options = options;
         _authentication = authentication;
         _snapshots = snapshots;
         _reports = reports;
         _management = management;
+        _plugins = plugins;
         _logger = logger;
         _listener.Prefixes.Add(options.Url);
     }
@@ -246,6 +249,41 @@ public sealed class FinesseHttpService : BackgroundService
         {
             await WriteJsonAsync(context.Response, _snapshots.GetServerInfo());
         }
+        else if (request.HttpMethod == "GET" && path == "/api/v1/plugins")
+        {
+            await WriteJsonAsync(context.Response, _plugins?.GetPlugins() ?? []);
+        }
+        else if (request.HttpMethod == "POST" && TryParsePluginAction(path, out var pluginId, out var pluginAction))
+        {
+            RequireSuperAdmin(user);
+            if (_plugins is null) throw new ManagementException(503, "pluginManagerUnavailable");
+            PluginInfoDto updated;
+            try { updated = await _plugins.SetEnabledAsync(pluginId, pluginAction == "enable"); }
+            catch (Exception ex)
+            {
+                _management.RecordExternalAction(pluginAction == "enable" ? "pluginEnable" : "pluginDisable", pluginId, false,
+                    ex is ManagementException ? ex.Message : "Operation failed");
+                throw;
+            }
+            _management.RecordExternalAction(pluginAction == "enable" ? "pluginEnable" : "pluginDisable", pluginId, true, "Completed");
+            await WriteJsonAsync(context.Response, updated);
+        }
+        else if (request.HttpMethod == "DELETE" && path.StartsWith("/api/v1/plugins/", StringComparison.Ordinal))
+        {
+            RequireSuperAdmin(user);
+            if (_plugins is null) throw new ManagementException(503, "pluginManagerUnavailable");
+            var deletePluginId = Uri.UnescapeDataString(path["/api/v1/plugins/".Length..]);
+            PluginInfoDto removed;
+            try { removed = await _plugins.DeleteAsync(deletePluginId); }
+            catch (Exception ex)
+            {
+                _management.RecordExternalAction("pluginDelete", deletePluginId, false,
+                    ex is ManagementException ? ex.Message : "Operation failed");
+                throw;
+            }
+            _management.RecordExternalAction("pluginDelete", deletePluginId, true, "Plugin DLL removed; restart required");
+            await WriteJsonAsync(context.Response, removed);
+        }
         else if (request.HttpMethod == "GET" && path == "/api/v1/bans")
         {
             await WriteJsonAsync(context.Response, _management.GetBans());
@@ -274,7 +312,10 @@ public sealed class FinesseHttpService : BackgroundService
         }
         else if (request.HttpMethod == "POST" && TryParsePlayerAction(path, out var clientId, out var action))
         {
-            await _management.ExecuteCommandAsync(action, clientId.ToString(), null, cancellationToken);
+            string? reason = null;
+            if (action == "kick" && request.HasEntityBody)
+                reason = (await ReadJsonAsync<KickRequest>(request, 4096, cancellationToken)).Reason;
+            await _management.ExecuteCommandAsync(action, clientId.ToString(), null, cancellationToken, reason);
             context.Response.StatusCode = (int)HttpStatusCode.NoContent;
             context.Response.Close();
         }
@@ -462,6 +503,16 @@ public sealed class FinesseHttpService : BackgroundService
         var segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
         return segments.Length == 5 && segments[0] == "api" && segments[1] == "v1" && segments[2] == "players" &&
             int.TryParse(segments[3], out clientId) && segments[4] is "kick" or "ban" && (action = segments[4]) is not null;
+    }
+
+    private static bool TryParsePluginAction(string path, out string pluginId, out string action)
+    {
+        pluginId = action = string.Empty;
+        var segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        if (segments.Length != 5 || segments[0] != "api" || segments[1] != "v1" || segments[2] != "plugins" || segments[4] is not ("enable" or "disable")) return false;
+        pluginId = Uri.UnescapeDataString(segments[3]);
+        action = segments[4];
+        return true;
     }
 
     private static bool TryParseGameAction(string path, out string code, out string action)

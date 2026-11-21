@@ -23,6 +23,7 @@ public sealed class BanService : IEventListener, IDisposable
     private readonly IEventManager _events;
     private readonly ILogger<BanService> _logger;
     private readonly string _path;
+    private readonly IDataStore<List<BanEntry>> _store;
     private List<BanEntry> _entries = [];
     private IDisposable? _registration;
     private bool _available = true;
@@ -30,19 +31,16 @@ public sealed class BanService : IEventListener, IDisposable
     public BanService(IEventManager events, ILogger<BanService> logger, string? path = null)
     {
         _events = events; _logger = logger;
-        _path = path ?? Path.Combine(AppContext.BaseDirectory, "finesse-bans.json");
+        _path = path ?? FinesseDataPaths.GetFile("bans.json", "finesse-bans.json");
+        _store = new JsonFileDataStore<List<BanEntry>>(_path);
         try
         {
-            if (File.Exists(_path))
-            {
-                var entries = JsonSerializer.Deserialize<List<BanEntry>>(File.ReadAllText(_path), JsonDefaults.Options)
-                    ?? throw new InvalidDataException("Invalid ban history");
-                if (entries.Count > 5000 || entries.Any(e => !Guid.TryParseExact(e.Id, "N", out _) ||
-                    Normalize(e.Kind, e.Value) != e.Value || e.Reason is null || e.Reason.Length > 200 || e.Reason.Any(char.IsControl)) ||
-                    entries.Select(e => e.Id).Distinct().Count() != entries.Count)
-                    throw new InvalidDataException("Invalid ban history");
-                _entries = entries;
-            }
+            var entries = _store.Load([]);
+            if (entries.Count > 5000 || entries.Any(e => !Guid.TryParseExact(e.Id, "N", out _) ||
+                Normalize(e.Kind, e.Value) != e.Value || e.Reason is null || e.Reason.Length > 200 || e.Reason.Any(char.IsControl)) ||
+                entries.Select(e => e.Id).Distinct().Count() != entries.Count)
+                throw new InvalidDataException("Invalid ban history");
+            _entries = entries;
         }
         catch (Exception ex)
         {
@@ -110,8 +108,7 @@ public sealed class BanService : IEventListener, IDisposable
         if (!_available) throw new ManagementException(503, "banStoreUnavailable");
         try
         {
-            File.WriteAllText(_path + ".tmp", JsonSerializer.Serialize(entries, JsonDefaults.Options));
-            File.Move(_path + ".tmp", _path, true);
+            _store.Save(entries);
         }
         catch (Exception ex)
         {

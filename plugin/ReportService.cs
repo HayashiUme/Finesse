@@ -22,6 +22,7 @@ public sealed class ReportService : BackgroundService, ICustomRootMessage
     private readonly ILogger<ReportService> _logger;
     private readonly IMessageWriterProvider _writers;
     private readonly string _path;
+    private readonly IDataStore<ReportDto[]> _store;
     private IDisposable? _registration;
     private bool _persistenceAvailable = true;
 
@@ -30,10 +31,11 @@ public sealed class ReportService : BackgroundService, ICustomRootMessage
         _messages = messages;
         _writers = writers;
         _logger = logger;
-        _path = path ?? Path.Combine(AppContext.BaseDirectory, "finesse-reports.json");
+        _path = path ?? FinesseDataPaths.GetFile("reports.json", "finesse-reports.json");
+        _store = new JsonFileDataStore<ReportDto[]>(_path);
         try
         {
-            if (File.Exists(_path)) _reports.AddRange((JsonSerializer.Deserialize<ReportDto[]>(File.ReadAllText(_path), JsonDefaults.Options) ?? []).Take(500));
+            _reports.AddRange(_store.Load([]).Take(500));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
         {
@@ -149,11 +151,9 @@ public sealed class ReportService : BackgroundService, ICustomRootMessage
             if (!_persistenceAvailable) return;
             reports = _reports.ToArray();
         }
-        var temporary = _path + ".tmp";
         try
         {
-            await File.WriteAllTextAsync(temporary, JsonSerializer.Serialize(reports, JsonDefaults.Options));
-            File.Move(temporary, _path, true);
+            await _store.SaveAsync(reports);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {

@@ -21,6 +21,7 @@ public sealed class FinessePluginStartup : IPluginStartup
         services.AddHostedService(provider => provider.GetRequiredService<ReportService>());
         services.AddSingleton<ManagementService>();
         services.AddHostedService(provider => provider.GetRequiredService<ManagementService>());
+        services.AddSingleton<PluginManagementService>();
         services.AddHostedService<FinesseHttpService>();
     }
 }

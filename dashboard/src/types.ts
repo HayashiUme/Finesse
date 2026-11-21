@@ -44,7 +44,7 @@ export type Connection = { name: string; baseUrl: string; apiKey?: string; token
 
 export type SavedServer = Connection & { id: string }
 export type ServerRegistry = { version: 1; servers: SavedServer[]; activeServerId: string | null }
-export type WorkspaceView = 'dashboard' | 'players' | 'games' | 'moderation' | 'messages' | 'system' | 'audit'
+export type WorkspaceView = 'dashboard' | 'players' | 'games' | 'moderation' | 'messages' | 'system' | 'plugins' | 'audit'
 export type AppView = WorkspaceView | 'settings' | 'servers' | 'login' | 'account'
 
 export type AuditEntry = { timestamp: string; action: string; target: string; success: boolean; detail: string; location?: string | null }
@@ -61,3 +61,4 @@ export type BanFeed = { available: boolean; entries: BanEntry[] }
 export type BanRequest = { kind: 'ip' | 'friendCode'; value: string; reason: string; durationMinutes: number | null }
 export type CommandResult = { delivered: number; skipped: number; failed: number }
 export type ServerInfo = { runtime: string; operatingSystem: string; architecture: string; processId: number; processorCount: number; serverVersion: string | null; apiAssemblyVersion: string }
+export type PluginInfo = { id: string; name: string; author: string; version: string; enabled: boolean; filePresent: boolean; fileName: string | null; canManage: boolean }
