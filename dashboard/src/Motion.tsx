@@ -59,7 +59,7 @@ export function TabBar({ selectionKey, children, className = '', ...props }: HTM
     observer.observe(bar)
     observer.observe(active)
     return () => observer.disconnect()
-  }, [selectionKey, children])
+  }, [selectionKey])
   return <div {...props} ref={ref} className={`motion-tabs ${className}`} onKeyDown={event => {
     props.onKeyDown?.(event)
     if (event.defaultPrevented || props.role !== 'tablist' || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return

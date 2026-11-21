@@ -30,7 +30,7 @@ button:disabled { scale: 1; translate: none; }
 }
 .motion-tabs[data-measured]::before { transition: transform var(--motion-medium) var(--motion-ease), width var(--motion-medium) var(--motion-ease), height var(--motion-medium) var(--motion-ease), background-color var(--motion-fast) ease; }
 .motion-tabs button { position: relative; z-index: 1; }
-.motion-tabs button:is(.active, .selected), .motion-tabs button[aria-selected="true"], .motion-tabs button[aria-pressed="true"] { background: transparent; }
+.motion-tabs button:is(.active, .selected), .motion-tabs button[aria-selected="true"], .motion-tabs button[aria-pressed="true"] { background: transparent !important; }
 .motion-tabs button[role="tab"][aria-selected="false"] { font-weight: 400; }
 .interface-tab-content { display: grid; gap: 14px; }
 
@@ -46,6 +46,12 @@ button:disabled { scale: 1; translate: none; }
 
 .toast.is-entering { animation: finesse-toast-in 300ms var(--motion-ease) both; }
 .toast.is-exiting { pointer-events: none; animation: finesse-toast-out 180ms ease-in both; }
+.toast { position: fixed; right: 24px; bottom: 24px; z-index: 31; display: flex; align-items: center; gap: 11px; padding: 12px 13px; border: 1px solid color-mix(in srgb, var(--accent-color) 34%, var(--line)); border-radius: 7px; background: var(--surface); color: var(--ink); box-shadow: var(--toast-shadow); }
+.toast > :first-child { min-width: 0; overflow-wrap: anywhere; }
+.toast.login-toast { width: min(390px, calc(100vw - 32px)); display: grid; grid-template-columns: minmax(0,1fr) 28px; align-items: start; padding: 14px 13px; }
+.toast.login-toast p { margin: 4px 0; font-size: 11px; line-height: 1.5; overflow-wrap: anywhere; }
+.toast.login-toast small { color: var(--muted); font-size: 10px; }
+.toast.login-toast .icon-btn { width: 28px; height: 28px; }
 .setup-form, .login-stage .auth-card { animation: finesse-modal-in 320ms var(--motion-ease) both; }
 
 @keyframes finesse-backdrop-in { from { opacity: 0; } to { opacity: 1; } }
@@ -59,6 +65,7 @@ button:disabled { scale: 1; translate: none; }
 @keyframes finesse-menu-in { from { opacity: 0; transform: translateY(-5px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
 
 @media (max-width: 600px) { .interface-tabs.motion-tabs { position: static; } }
+@media (max-width: 600px) { .toast { right: 12px; bottom: calc(12px + env(safe-area-inset-bottom)); max-width: calc(100vw - 24px); } }
 .game-tile, .server-row, .interface-endpoint-card, .interface-key-card { transition: border-color var(--motion-fast) ease, box-shadow var(--motion-fast) ease, background-color var(--motion-fast) ease; }
 @media (hover: hover) and (pointer: fine) {
   .game-tile:hover, .server-row:hover, .interface-endpoint-card:hover, .interface-key-card:hover { border-color: color-mix(in srgb, var(--accent-color) 48%, var(--line)); }

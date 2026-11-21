@@ -39,6 +39,7 @@ export function Modal({ title, children, onClose, className }: { title: string; 
     return () => { document.body.style.overflow = overflow; if (previous?.isConnected) previous.focus() }
   }, [])
   return createPortal(<div className={`modal-backdrop ${className ? `${className}-backdrop` : ''} ${present ? 'is-entering' : 'is-exiting'}`} aria-hidden={!present || undefined} onMouseDown={e => { if (present && e.target === e.currentTarget) onClose() }}><section ref={panel} tabIndex={-1} className={`settings-modal ${className ?? ''}`} role="dialog" aria-modal="true" aria-label={title} onKeyDown={e => {
+    if (!present) return
     if (e.key === 'Escape') onClose()
     if (e.key === 'Tab') {
       const nodes = Array.from(panel.current?.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [href]') ?? []).filter(node => !node.closest('fieldset:disabled'))
