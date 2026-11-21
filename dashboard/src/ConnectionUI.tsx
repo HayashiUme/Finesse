@@ -24,7 +24,7 @@ export function ServerSetup({ initial, error, busy, onConnect, onSave }: { initi
     </div><footer className="setup-footer"><span>FINESSE</span><span>{t('setupFooter')}</span></footer></main>
 }
 
-export function Modal({ title, children, onClose }: { title: string; children: React.ReactNode; onClose: () => void }) {
+export function Modal({ title, children, onClose, className }: { title: string; children: React.ReactNode; onClose: () => void; className?: string }) {
   const { t } = useTranslation()
   const panel = useRef<HTMLElement>(null)
   useEffect(() => {
@@ -34,7 +34,7 @@ export function Modal({ title, children, onClose }: { title: string; children: R
     panel.current?.focus()
     return () => { document.body.style.overflow = overflow; if (previous?.isConnected) previous.focus() }
   }, [])
-  return <div className="modal-backdrop" onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}><section ref={panel} tabIndex={-1} className="settings-modal" role="dialog" aria-modal="true" aria-label={title} onKeyDown={e => {
+  return <div className={`modal-backdrop ${className ? `${className}-backdrop` : ''}`} onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}><section ref={panel} tabIndex={-1} className={`settings-modal ${className ?? ''}`} role="dialog" aria-modal="true" aria-label={title} onKeyDown={e => {
     if (e.key === 'Escape') onClose()
     if (e.key === 'Tab') {
       const nodes = Array.from(panel.current?.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [href]') ?? []).filter(node => !node.closest('fieldset:disabled'))

@@ -1,22 +1,22 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { ArrowDownToLine, ArrowUpRight, Ban, ClipboardList, Gamepad2, Globe2, LoaderCircle, LogOut, RefreshCw, Search, Settings2, ShieldCheck, Users, WifiOff, X } from 'lucide-react'
-import { fetchAudit, fetchSnapshot, gameAction, playerAction } from './api'
+import { ArrowDownToLine, ArrowUpRight, Ban, ClipboardList, Gamepad2, Globe2, LoaderCircle, LogOut, Plug, RefreshCw, Search, Settings2, ShieldCheck, Users, WifiOff, X } from 'lucide-react'
+import { fetchAudit, fetchPlugins, fetchSnapshot, gameAction, playerAction } from './api'
 import { useRealtime } from './useRealtime'
 import { errorMessage, LocalizedError, type TranslationKey } from './i18n'
 import AppShell, { type WorkspaceProps } from './AppShell'
 import { Modal } from './ConnectionUI'
 import ProcessGauge from './ProcessGauge'
 import ReportsPanel from './ReportsPanel'
-import { MessageComposer, MessagesPanel, ModerationPanel, PlayerDetails, ServerInfoPanel } from './ManagementPanels'
+import { MessageComposer, MessagesPanel, ModerationPanel, PlayerDetails } from './ManagementPanels'
 import PluginsPanel from './PluginsPanel'
 import type { Game, Player, Snapshot, Connection } from './types'
 import './telemetry.css'
 import { useAuth } from './auth'
 
-const titles = { dashboard: 'navDashboard', players: 'titlePlayers', games: 'titleGames', audit: 'navAudit', moderation: 'navModeration', messages: 'navMessages', system: 'navSystem', plugins: 'navPlugins' } as const
-const descriptions = { players: 'managePlayers', games: 'manageGames', audit: 'auditDescription', moderation: 'moderationDescription', messages: 'messagesDescription', system: 'systemDescription', plugins: 'pluginsDescription' } as const
+const titles = { dashboard: 'navDashboard', players: 'titlePlayers', games: 'titleGames', audit: 'navAudit', moderation: 'navModeration', messages: 'navMessages', plugins: 'navPlugins' } as const
+const descriptions = { players: 'managePlayers', games: 'manageGames', audit: 'auditDescription', moderation: 'moderationDescription', messages: 'messagesDescription', plugins: 'pluginsDescription' } as const
 const filters = [{ id: 'all', label: 'filterAll' }, { id: 'lobby', label: 'lobby' }, { id: 'playing', label: 'playing' }] as const
 type Filter = typeof filters[number]['id']
 const gameStates: Record<string, Extract<TranslationKey, `state${string}`>> = { NotStarted: 'stateWaiting', Starting: 'stateStarting', Started: 'stateStarted', Ended: 'stateEnded', Destroyed: 'stateDestroyed' }
@@ -121,10 +121,9 @@ export default function ServerWorkspace({ connection, view, ...shell }: Workspac
 
         {view === 'moderation' && <ModerationPanel connection={connection} />}
         {view === 'messages' && <MessagesPanel connection={connection} games={games} />}
-        {view === 'system' && <ServerInfoPanel connection={connection} />}
         {view === 'plugins' && <PluginsPanel connection={connection} canManage={canManagePlugins} />}
 
-        {view === 'dashboard' && <DashboardHome connection={connection} data={data} audit={audit.data ?? []} auditLoading={audit.isPending} auditError={audit.isError} formatUptime={formatUptime} number={number} live={live} onPlayers={() => shell.onNavigate('players')} onGames={() => shell.onNavigate('games')} onAudit={() => shell.onNavigate('audit')} onRoom={setSelectedCode} />}
+        {view === 'dashboard' && <DashboardHome connection={connection} data={data} audit={audit.data ?? []} auditLoading={audit.isPending} auditError={audit.isError} formatUptime={formatUptime} number={number} live={live} onPlayers={() => shell.onNavigate('players')} onGames={() => shell.onNavigate('games')} onPlugins={() => shell.onNavigate('plugins')} onAudit={() => shell.onNavigate('audit')} onRoom={setSelectedCode} />}
 
         {view === 'players' && <section className="stats-grid">
           <StatCard label={t('onlinePlayers')} value={number(data.onlinePlayers)} detail={t('allConnections')} icon={<Users size={18} />} accent="mint" />
@@ -158,13 +157,14 @@ export default function ServerWorkspace({ connection, view, ...shell }: Workspac
   </AppShell>
 }
 
-function DashboardHome({ connection, data, audit, auditLoading, auditError, formatUptime, number, live, onPlayers, onGames, onAudit, onRoom }: {
+function DashboardHome({ connection, data, audit, auditLoading, auditError, formatUptime, number, live, onPlayers, onGames, onPlugins, onAudit, onRoom }: {
   connection: Connection; data: Snapshot; live: boolean
   audit: Awaited<ReturnType<typeof fetchAudit>>; auditLoading: boolean; auditError: boolean
   formatUptime: (seconds: number) => string; number: (value: number) => string
-  onPlayers: () => void; onGames: () => void; onAudit: () => void; onRoom: (code: string) => void
+  onPlayers: () => void; onGames: () => void; onPlugins: () => void; onAudit: () => void; onRoom: (code: string) => void
 }) {
   const { t, i18n } = useTranslation()
+  const plugins = useQuery({ queryKey: ['plugins', connection], queryFn: ({ signal }) => fetchPlugins(connection, signal), retry: false, refetchInterval: 5000 })
   const activePlayers = data.players.filter(player => player.inGame).length
   const lobbyPlayers = data.onlinePlayers - activePlayers
   const visibleGames = data.games.slice(0, 5)
@@ -173,6 +173,7 @@ function DashboardHome({ connection, data, audit, auditLoading, auditError, form
     <section className="dashboard-metrics" aria-label={t('dashboardMetrics')}>
       <button className="dashboard-metric accent-mint" onClick={onPlayers}><span className="dashboard-metric-icon"><Users size={18} /></span><b>{number(data.onlinePlayers)}</b><strong>{t('onlinePlayers')}</strong><small>{t('dashboardPlayerSplit', { lobby: number(lobbyPlayers), playing: number(activePlayers) })}</small></button>
       <button className="dashboard-metric accent-lilac" onClick={onGames}><span className="dashboard-metric-icon"><Gamepad2 size={18} /></span><b>{number(data.activeGames)}</b><strong>{t('activeGames')}</strong><small>{t('dashboardRoomsTotal', { count: data.totalGames })}</small></button>
+      <button className="dashboard-metric accent-blue" onClick={onPlugins}><span className="dashboard-metric-icon"><Plug size={18} /></span><b>{plugins.data ? number(plugins.data.filter(plugin => plugin.enabled && plugin.filePresent).length) : '—'}</b><strong>{t('loadedPlugins')}</strong><small>{plugins.isError ? t('pluginsUnavailable') : plugins.data ? t('loadedPluginsTotal', { count: plugins.data.length }) : t('loadingPlugins')}</small></button>
       <ProcessGauge kind="cpu" metrics={data.process} />
       <ProcessGauge kind="memory" metrics={data.process} />
     </section>

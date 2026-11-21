@@ -44,7 +44,7 @@ export type Connection = { name: string; baseUrl: string; apiKey?: string; token
 
 export type SavedServer = Connection & { id: string }
 export type ServerRegistry = { version: 1; servers: SavedServer[]; activeServerId: string | null }
-export type WorkspaceView = 'dashboard' | 'players' | 'games' | 'moderation' | 'messages' | 'system' | 'plugins' | 'audit'
+export type WorkspaceView = 'dashboard' | 'players' | 'games' | 'moderation' | 'messages' | 'plugins' | 'audit'
 export type AppView = WorkspaceView | 'settings' | 'servers' | 'login' | 'account'
 
 export type AuditEntry = { timestamp: string; action: string; target: string; success: boolean; detail: string; location?: string | null }

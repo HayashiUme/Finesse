@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Check, ChevronDown, ChevronRight, ClipboardList, Command, Gamepad2, Info, LayoutDashboard, LogOut, Megaphone, Plug, Plus, RefreshCw, Server, Settings2, ShieldCheck, UserRoundCog, Users } from 'lucide-react'
+import { Check, ChevronDown, ClipboardList, Command, Gamepad2, LayoutDashboard, LogOut, Megaphone, Plug, Plus, RefreshCw, Server, Settings2, ShieldCheck, UserRoundCog, Users } from 'lucide-react'
 import { ConfigHelp, Modal } from './ConnectionUI'
 import type { AppView, SavedServer, WorkspaceView } from './types'
 import { useAuth } from './auth'
@@ -17,6 +17,7 @@ const navigation = [
   { id: 'players', label: 'navPlayers', icon: Users },
   { id: 'games', label: 'navGames', icon: Gamepad2 },
   { id: 'moderation', label: 'navModeration', icon: ShieldCheck },
+  { id: 'plugins', label: 'navPlugins', icon: Plug },
   { id: 'messages', label: 'navMessages', icon: Megaphone },
   { id: 'audit', label: 'navAudit', icon: ClipboardList },
 ] as const
@@ -27,8 +28,7 @@ export default function AppShell({ children, live, connected, onRefresh, ...prop
   const { t } = useTranslation()
   const auth = useAuth()
   const [help, setHelp] = useState(false)
-  const [serverToolsOpen, setServerToolsOpen] = useState(true)
-  const title = props.view === 'servers' ? t('navServers') : props.view === 'settings' ? t('preferences') : props.view === 'account' ? t('accountSettings') : props.view === 'login' ? t('signIn') : props.view === 'system' ? t('navSystem') : props.view === 'plugins' ? t('navPlugins') : t(navigation.find(n => n.id === props.view)!.label)
+  const title = props.view === 'servers' ? t('navServers') : props.view === 'settings' ? t('preferences') : props.view === 'account' ? t('accountSettings') : props.view === 'login' ? t('signIn') : t(navigation.find(n => n.id === props.view)!.label)
   const account = props.current ? auth.sessions[props.current.id]?.user : undefined
   return <div className="app-shell">
     <aside className="sidebar">
@@ -39,11 +39,6 @@ export default function AppShell({ children, live, connected, onRefresh, ...prop
       <nav aria-label={t('management')}><button title={t('navServers')} className={`nav-link ${props.view === 'servers' ? 'active' : ''}`} aria-current={props.view === 'servers' ? 'page' : undefined} onClick={props.onDirectory}><Server size={17} /><span>{t('navServers')}</span><em>{props.servers.length}</em></button></nav>
       <div className="nav-caption">{t('workspace')}</div>
       <nav aria-label={t('workspace')}>{navigation.filter(item => item.id !== 'dashboard').map(({ id, label, icon: Icon }) => <button key={id} title={t(label)} disabled={!props.current} className={`nav-link ${props.view === id ? 'active' : ''}`} aria-current={props.view === id ? 'page' : undefined} onClick={() => props.onNavigate(id)}><Icon size={17} /><span>{t(label)}</span></button>)}</nav>
-      <button className="nav-caption nav-group-toggle" aria-expanded={serverToolsOpen} onClick={() => setServerToolsOpen(!serverToolsOpen)}><span>{t('serverTools')}</span>{serverToolsOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}</button>
-      {serverToolsOpen && <nav className="nav-submenu" aria-label={t('serverTools')}>
-        <button title={t('navSystem')} disabled={!props.current} className={`nav-link nav-link-child ${props.view === 'system' ? 'active' : ''}`} aria-current={props.view === 'system' ? 'page' : undefined} onClick={() => props.onNavigate('system')}><Info size={17} /><span>{t('navSystem')}</span></button>
-        <button title={t('navPlugins')} disabled={!props.current} className={`nav-link nav-link-child ${props.view === 'plugins' ? 'active' : ''}`} aria-current={props.view === 'plugins' ? 'page' : undefined} onClick={() => props.onNavigate('plugins')}><Plug size={17} /><span>{t('navPlugins')}</span></button>
-      </nav>}
       <div className="nav-caption section-caption">{t('management')}</div>
       <button className={`nav-link ${props.view === 'account' ? 'active' : ''}`} title={t('accountSettings')} aria-current={props.view === 'account' ? 'page' : undefined} disabled={!props.current} onClick={props.onAccount}><UserRoundCog size={17} /><span>{t('accountSettings')}</span></button>
       <button className={`nav-link ${props.view === 'settings' ? 'active' : ''}`} title={t('preferences')} onClick={props.onSettings}><Settings2 size={17} /><span>{t('preferences')}</span></button>
