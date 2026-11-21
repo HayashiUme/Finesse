@@ -1,4 +1,6 @@
 node_modules/
+__pycache__/
+*.py[cod]
 dist/
 coverage/
 *.user
@@ -19,3 +21,4 @@ finesse-bans.json.tmp
 tests/
 docs/*
 !docs/privacy-policy.md
+!docs/dashboard-updater.md
