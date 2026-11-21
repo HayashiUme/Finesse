@@ -61,4 +61,4 @@ export type BanFeed = { available: boolean; entries: BanEntry[] }
 export type BanRequest = { kind: 'ip' | 'friendCode'; value: string; reason: string; durationMinutes: number | null }
 export type CommandResult = { delivered: number; skipped: number; failed: number }
 export type ServerInfo = { runtime: string; operatingSystem: string; architecture: string; processId: number; processorCount: number; serverVersion: string | null; apiAssemblyVersion: string }
-export type PluginInfo = { id: string; name: string; author: string; version: string; enabled: boolean; filePresent: boolean; fileName: string | null; canManage: boolean }
+export type PluginInfo = { id: string; name: string; author: string; version: string; enabled: boolean; filePresent: boolean | null; fileName: string | null; canManage: boolean }

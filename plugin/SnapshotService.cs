@@ -24,7 +24,10 @@ public sealed class SnapshotService
 
     public SnapshotDto GetSnapshot()
     {
-        var games = _gameManager.Games.Select(ToGame).ToArray();
+        var games = _gameManager.Games
+            .Where(game => game.GameState is not (GameStates.Ended or GameStates.Destroyed))
+            .Select(ToGame)
+            .ToArray();
         var players = _clientManager.Clients
             .Select(ToClient)
             .ToArray();

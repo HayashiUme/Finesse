@@ -48,12 +48,13 @@ export default function ServerWorkspace({ connection, view, ...shell }: Workspac
 
   const players = query.data?.players ?? []
   const games = query.data?.games ?? []
-  const selectedGame = games.find(g => g.code === selectedCode)
+  const activeGames = useMemo(() => games.filter(game => game.state !== 'Ended' && game.state !== 'Destroyed'), [games])
+  const selectedGame = activeGames.find(g => g.code === selectedCode)
   const selectedPlayer = players.find(p => p.clientId === selectedPlayerId)
   const canManagePlugins = auth.sessions[connection.id]?.user.role === 'superadmin'
   const number = (value: number) => new Intl.NumberFormat(i18n.resolvedLanguage).format(value)
   const filteredPlayers = useMemo(() => players.filter(p => [p.name, p.clientId, p.gameCode, p.address, p.friendCode, p.platform].join(' ').toLowerCase().includes(search.toLowerCase())), [players, search])
-  const filteredGames = useMemo(() => games.filter(g => (filter === 'all' || (filter === 'playing' ? g.state === 'Started' : g.state === 'NotStarted')) && `${g.code} ${g.hostName ?? ''}`.toLowerCase().includes(view === 'games' ? search.toLowerCase() : '')), [games, filter, search, view])
+  const filteredGames = useMemo(() => activeGames.filter(g => (filter === 'all' || (filter === 'playing' ? g.state === 'Started' : g.state === 'NotStarted')) && `${g.code} ${g.hostName ?? ''}`.toLowerCase().includes(view === 'games' ? search.toLowerCase() : '')), [activeGames, filter, search, view])
 
   function formatUptime(seconds: number) {
     const days = Math.floor(seconds / 86400)
@@ -120,7 +121,7 @@ export default function ServerWorkspace({ connection, view, ...shell }: Workspac
         <div className="page-heading"><div><div className="eyebrow"><span className="pulse-mini" />{t('serverManagement')}</div><h1>{t(titles[view])}</h1><p>{t(view === 'dashboard' ? (live ? 'liveDescription' : 'pollingDescription') : descriptions[view])}</p></div><div className="heading-actions">{view === 'dashboard' && <button className="secondary-btn" onClick={() => shell.onEdit(connection)}><Settings2 size={16} />{t('connectionSettings')}</button>}</div></div>
 
         {view === 'moderation' && <ModerationPanel connection={connection} />}
-        {view === 'messages' && <MessagesPanel connection={connection} games={games} />}
+        {view === 'messages' && <MessagesPanel connection={connection} games={activeGames} />}
         {view === 'plugins' && <PluginsPanel connection={connection} canManage={canManagePlugins} />}
 
         {view === 'dashboard' && <DashboardHome connection={connection} data={data} audit={audit.data ?? []} auditLoading={audit.isPending} auditError={audit.isError} formatUptime={formatUptime} number={number} live={live} onPlayers={() => shell.onNavigate('players')} onGames={() => shell.onNavigate('games')} onPlugins={() => shell.onNavigate('plugins')} onAudit={() => shell.onNavigate('audit')} onRoom={setSelectedCode} />}
@@ -143,7 +144,7 @@ export default function ServerWorkspace({ connection, view, ...shell }: Workspac
         </section>}
 
         {view === 'games' && <section className="section-block games-block">
-          <div className="section-head"><div><div className="section-title"><h2>{t('titleGames')}</h2><span className="count-tag">{number(games.length)}</span></div><p>{t('manageGames')}</p></div><div className="table-tools">{view === 'games' && <label className="search-box"><Search size={15} /><input aria-label={t('searchGames')} value={search} onChange={e => setSearch(e.target.value)} placeholder={t('searchGamesPlaceholder')} /></label>}<div className="segmented">{filters.map(item => <button key={item.id} className={filter === item.id ? 'selected' : ''} aria-pressed={filter === item.id} onClick={() => setFilter(item.id)}>{t(item.label)}</button>)}</div></div></div>
+          <div className="section-head"><div><div className="section-title"><h2>{t('titleGames')}</h2><span className="count-tag">{number(activeGames.length)}</span></div><p>{t('manageGames')}</p></div><div className="table-tools">{view === 'games' && <label className="search-box"><Search size={15} /><input aria-label={t('searchGames')} value={search} onChange={e => setSearch(e.target.value)} placeholder={t('searchGamesPlaceholder')} /></label>}<div className="segmented">{filters.map(item => <button key={item.id} className={filter === item.id ? 'selected' : ''} aria-pressed={filter === item.id} onClick={() => setFilter(item.id)}>{t(item.label)}</button>)}</div></div></div>
           <div className="games-grid">{filteredGames.map(game => <GameTile key={game.code} game={game} onSelect={() => setSelectedCode(game.code)} />)}</div>
           {filteredGames.length === 0 && <div className="empty-state"><Gamepad2 size={24} /><span>{t('noGames')}</span></div>}
         </section>}
@@ -173,7 +174,7 @@ function DashboardHome({ connection, data, audit, auditLoading, auditError, form
     <section className="dashboard-metrics" aria-label={t('dashboardMetrics')}>
       <button className="dashboard-metric accent-mint" onClick={onPlayers}><span className="dashboard-metric-icon"><Users size={18} /></span><b>{number(data.onlinePlayers)}</b><strong>{t('onlinePlayers')}</strong><small>{t('dashboardPlayerSplit', { lobby: number(lobbyPlayers), playing: number(activePlayers) })}</small></button>
       <button className="dashboard-metric accent-lilac" onClick={onGames}><span className="dashboard-metric-icon"><Gamepad2 size={18} /></span><b>{number(data.activeGames)}</b><strong>{t('activeGames')}</strong><small>{t('dashboardRoomsTotal', { count: data.totalGames })}</small></button>
-      <button className="dashboard-metric accent-blue" onClick={onPlugins}><span className="dashboard-metric-icon"><Plug size={18} /></span><b>{plugins.data ? number(plugins.data.filter(plugin => plugin.enabled && plugin.filePresent).length) : '—'}</b><strong>{t('loadedPlugins')}</strong><small>{plugins.isError ? t('pluginsUnavailable') : plugins.data ? t('loadedPluginsTotal', { count: plugins.data.length }) : t('loadingPlugins')}</small></button>
+      <button className="dashboard-metric accent-blue" onClick={onPlugins}><span className="dashboard-metric-icon"><Plug size={18} /></span><b>{plugins.data ? number(plugins.data.filter(plugin => plugin.enabled).length) : '—'}</b><strong>{t('loadedPlugins')}</strong><small>{plugins.isError ? t('pluginsUnavailable') : plugins.data ? t('loadedPluginsTotal', { count: plugins.data.length }) : t('loadingPlugins')}</small></button>
       <ProcessGauge kind="cpu" metrics={data.process} />
       <ProcessGauge kind="memory" metrics={data.process} />
     </section>
