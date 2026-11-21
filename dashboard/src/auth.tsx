@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react'
-import { X } from 'lucide-react'
+import { Presence, Toast } from './Motion'
 import { useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { fetchMe, logout } from './api'
@@ -96,5 +96,5 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       catch { setLogoutWarning(true) }
     },
     setUser: (id, user) => updateSessions(previous => previous[id] ? { ...previous, [id]: { ...previous[id], user } } : previous),
-  }}>{children}{notice && <div className="toast login-toast" role="status"><div><b>{t('panelLoginTitle')}</b><p>{t('loginIp')}: {notice.ip}</p><p>{t('loginLocation')}: {notice.location === 'local' ? t('loginLocationLocal') : notice.location ?? t('loginLocationUnavailable')}</p><small>{new Date(notice.timestamp).toLocaleString(i18n.resolvedLanguage)}</small></div></div>}{logoutWarning && <div className="toast login-toast" role="alert"><span>{t('signOutOffline')}</span><button className="icon-btn" aria-label={t('dismiss')} onClick={() => setLogoutWarning(false)}><X size={15} /></button></div>}</AuthContext.Provider>
+  }}>{children}<Presence>{notice && <Toast className="login-toast"><div><b>{t('panelLoginTitle')}</b><p>{t('loginIp')}: {notice.ip}</p><p>{t('loginLocation')}: {notice.location === 'local' ? t('loginLocationLocal') : notice.location ?? t('loginLocationUnavailable')}</p><small>{new Date(notice.timestamp).toLocaleString(i18n.resolvedLanguage)}</small></div></Toast>}</Presence><Presence>{logoutWarning && <Toast className="login-toast" role="alert" onDismiss={() => setLogoutWarning(false)}><span>{t('signOutOffline')}</span></Toast>}</Presence></AuthContext.Provider>
 }

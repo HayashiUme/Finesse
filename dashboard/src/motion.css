@@ -1,0 +1,69 @@
+:root {
+  --motion-fast: 140ms;
+  --motion-medium: 240ms;
+  --motion-ease: cubic-bezier(.16, 1, .3, 1);
+}
+
+/* Feedback starts on press, and transitions remain interruptible. */
+button, a, label.secondary-btn {
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color var(--motion-fast) ease, color var(--motion-fast) ease, border-color var(--motion-fast) ease, box-shadow var(--motion-fast) ease, opacity var(--motion-fast) ease, translate var(--motion-fast) var(--motion-ease), scale var(--motion-fast) var(--motion-ease);
+}
+button:not(:disabled):active, a:active, label.secondary-btn:active { scale: .97; transition-duration: 70ms; }
+button:disabled { scale: 1; translate: none; }
+@media (hover: hover) and (pointer: fine) {
+  :is(.primary-btn, .secondary-btn, .danger-btn, .icon-btn, .help-circle):not(:disabled):hover, label.secondary-btn:hover { translate: 0 -1px; }
+}
+.nav-link svg, .server-select > svg:last-child { transition: transform var(--motion-medium) var(--motion-ease); }
+.nav-link.active svg { transform: scale(1.08); }
+.server-select[aria-expanded="true"] > svg:last-child { transform: rotate(180deg); }
+.server-menu { transform-origin: top left; animation: finesse-menu-in 180ms var(--motion-ease) both; }
+
+.motion-content { min-width: 0; }
+.motion-tabs { position: relative; isolation: isolate; }
+.interface-tabs.motion-tabs { position: sticky; }
+.motion-tabs::before {
+  content: ''; position: absolute; top: 0; left: 0; z-index: 0; pointer-events: none;
+  width: var(--tab-width, 0px); height: var(--tab-height, 0px);
+  transform: translate(var(--tab-x, 0px), var(--tab-y, 0px));
+  border-radius: 5px; background: var(--surface-selected);
+}
+.motion-tabs[data-measured]::before { transition: transform var(--motion-medium) var(--motion-ease), width var(--motion-medium) var(--motion-ease), height var(--motion-medium) var(--motion-ease), background-color var(--motion-fast) ease; }
+.motion-tabs button { position: relative; z-index: 1; }
+.motion-tabs button:is(.active, .selected), .motion-tabs button[aria-selected="true"], .motion-tabs button[aria-pressed="true"] { background: transparent; }
+.motion-tabs button[role="tab"][aria-selected="false"] { font-weight: 400; }
+.interface-tab-content { display: grid; gap: 14px; }
+
+.modal-backdrop { animation: finesse-backdrop-in 200ms ease-out both; }
+.modal-backdrop .settings-modal { transform-origin: center; animation: finesse-modal-in 280ms var(--motion-ease) both; }
+.modal-backdrop.is-entering { pointer-events: auto; }
+.modal-backdrop.is-entering .settings-modal { pointer-events: auto; }
+.modal-backdrop.is-exiting .settings-modal { pointer-events: none; }
+.modal-backdrop .server-details-modal { animation-name: finesse-drawer-in; }
+.modal-backdrop.is-exiting { pointer-events: none; animation: finesse-backdrop-out 180ms ease-in both; }
+.modal-backdrop.is-exiting .settings-modal { animation: finesse-modal-out 180ms ease-in both; }
+.modal-backdrop.is-exiting .server-details-modal { animation-name: finesse-drawer-out; }
+
+.toast.is-entering { animation: finesse-toast-in 300ms var(--motion-ease) both; }
+.toast.is-exiting { pointer-events: none; animation: finesse-toast-out 180ms ease-in both; }
+.setup-form, .login-stage .auth-card { animation: finesse-modal-in 320ms var(--motion-ease) both; }
+
+@keyframes finesse-backdrop-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes finesse-backdrop-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes finesse-modal-in { from { opacity: 0; transform: translateY(14px) scale(.975); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes finesse-modal-out { from { opacity: 1; transform: translateY(0) scale(1); } to { opacity: 0; transform: translateY(8px) scale(.985); } }
+@keyframes finesse-drawer-in { from { opacity: 0; transform: translateX(32px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes finesse-drawer-out { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(24px); } }
+@keyframes finesse-toast-in { from { opacity: 0; transform: translateX(24px) scale(.97); } to { opacity: 1; transform: translateX(0) scale(1); } }
+@keyframes finesse-toast-out { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(20px); } }
+@keyframes finesse-menu-in { from { opacity: 0; transform: translateY(-5px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
+@media (max-width: 600px) { .interface-tabs.motion-tabs { position: static; } }
+.game-tile, .server-row, .interface-endpoint-card, .interface-key-card { transition: border-color var(--motion-fast) ease, box-shadow var(--motion-fast) ease, background-color var(--motion-fast) ease; }
+@media (hover: hover) and (pointer: fine) {
+  .game-tile:hover, .server-row:hover, .interface-endpoint-card:hover, .interface-key-card:hover { border-color: color-mix(in srgb, var(--accent-color) 48%, var(--line)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+  button:active, a:active, label.secondary-btn:active, button:hover, label.secondary-btn:hover { scale: 1; translate: none; }
+}

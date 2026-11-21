@@ -6,6 +6,7 @@ import './themes.css'
 import './styles.css'
 import './servers.css'
 import './accounts.css'
+import './motion.css'
 import './i18n'
 
 async function registerDashboardUpdates() {

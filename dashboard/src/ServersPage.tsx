@@ -1,3 +1,4 @@
+import { Presence } from './Motion'
 import { useState } from 'react'
 import { useQueries } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -36,6 +37,6 @@ export default function ServersPage({ onRemove, ...shell }: ShellProps & { onRem
       })}</div>
       {!visible.length && <div className="directory-empty"><Search size={25} /><p>{t('noMatchingServers')}</p><button className="secondary-btn" onClick={() => setSearch('')}>{t('clearSearch')}</button></div>}
     </section><p className="directory-note">{t('serverStorageNote')}</p>
-    {detailsServer && <Modal title={detailsServer.name} className="server-details-modal" onClose={() => setDetailsServer(null)}>{auth.sessions[detailsServer.id] ? <ServerInfoPanel connection={{ ...detailsServer, token: auth.sessions[detailsServer.id].token }} /> : <div className="server-details-login"><Server size={23} /><p>{t('serverDetailsLoginRequired')}</p><button className="primary-btn" onClick={() => { setDetailsServer(null); shell.onSelect(detailsServer) }}>{t('openServer')}<ArrowUpRight size={15} /></button></div>}</Modal>}
+    <Presence>{detailsServer && <Modal title={detailsServer.name} className="server-details-modal" onClose={() => setDetailsServer(null)}>{auth.sessions[detailsServer.id] ? <ServerInfoPanel connection={{ ...detailsServer, token: auth.sessions[detailsServer.id].token }} /> : <div className="server-details-login"><Server size={23} /><p>{t('serverDetailsLoginRequired')}</p><button className="primary-btn" onClick={() => { setDetailsServer(null); shell.onSelect(detailsServer) }}>{t('openServer')}<ArrowUpRight size={15} /></button></div>}</Modal>}</Presence>
   </AppShell>
 }

@@ -1,3 +1,4 @@
+import { Presence } from './Motion'
 import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -68,7 +69,7 @@ export function ModerationPanel({ connection }: { connection: Connection }) {
     {!query.isError && <><div className="table-wrap"><table><thead><tr><th>{t('banType')}</th><th>{t('target')}</th><th>{t('banReason')}</th><th>{t('banCreated')}</th><th>{t('banExpires')}</th><th>{t('actions')}</th></tr></thead><tbody>{entries.map(entry => <tr key={entry.id}><td>{t(entry.kind === 'ip' ? 'ipAddress' : 'friendCode')}</td><td><b>{entry.value}</b></td><td>{entry.reason || '—'}</td><td>{new Date(entry.createdAt).toLocaleString(i18n.resolvedLanguage)}</td><td>{entry.expiresAt ? new Date(entry.expiresAt).toLocaleString(i18n.resolvedLanguage) : t('permanentBan')}</td><td><button className="secondary-btn" disabled={pending || !query.data?.available} onClick={() => void unban(entry.id, entry.value)}><Trash2 size={14} />{t('unban')}</button></td></tr>)}</tbody></table></div>
     {!entries.length && <div className="dashboard-empty"><Ban size={20} />{t(query.isPending ? 'loadingBans' : search ? 'noMatchingBans' : 'noBans')}</div>}</>}
   </section><ReportsPanel connection={connection} />
-    {editor && <Modal title={t('addServerBan')} onClose={() => setEditor(false)}><BanEditor connection={connection} onSaved={() => setEditor(false)} /></Modal>}
+    <Presence>{editor && <Modal title={t('addServerBan')} onClose={() => setEditor(false)}><BanEditor connection={connection} onSaved={() => setEditor(false)} /></Modal>}</Presence>
   </div>
 }
 

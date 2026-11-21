@@ -1,3 +1,4 @@
+import { MotionContent, Presence, TabBar } from './Motion'
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -61,7 +62,8 @@ export default function InterfacePage({ connection, canManage }: { connection: C
   ]
 
   return <div className="interface-page">
-    <nav className="interface-tabs" aria-label={t('navInterface')} role="tablist">{tabs.map(({ id, label, icon: Icon }) => <button key={id} role="tab" aria-selected={tab === id} className={tab === id ? 'active' : ''} onClick={() => setTab(id)}><Icon size={16} /><span>{t(label, { defaultValue: label })}</span>{id === 'keys' && <em>{settings.data?.apiKeys.length ?? 0}</em>}</button>)}</nav>
+    <TabBar selectionKey={tab} className="interface-tabs" aria-label={t('navInterface')} role="tablist">{tabs.map(({ id, label, icon: Icon }) => <button key={id} id={`interface-tab-${id}`} role="tab" aria-selected={tab === id} aria-controls={`interface-panel-${id}`} tabIndex={tab === id ? 0 : -1} className={tab === id ? 'active' : ''} onClick={() => setTab(id)}><Icon size={16} /><span>{t(label, { defaultValue: label })}</span>{id === 'keys' && <em>{settings.data?.apiKeys.length ?? 0}</em>}</button>)}</TabBar>
+    <MotionContent motionKey={tab} className="interface-tab-content" id={`interface-panel-${tab}`} role="tabpanel" aria-labelledby={`interface-tab-${tab}`}>
     {!canManage && <section className="interface-card"><div className="interface-card-empty"><LockKeyhole size={19} /><span>{t('interfaceSuperAdminOnly')}</span></div></section>}
 
     {canManage && tab === 'keys' && <>
@@ -108,8 +110,9 @@ export default function InterfacePage({ connection, canManage }: { connection: C
     </section>}
 
     {error && <div className="setup-error" role="alert">{errorMessage(error)}</div>}
-    {createdKey && <Modal title={t('interfaceKeyCreated')} onClose={() => setCreatedKey(null)}><p className="modal-copy">{t('interfaceKeyOneTime')}</p><code className="interface-secret">{createdKey.secret}</code><div className="modal-actions"><button className="primary-btn" onClick={() => void navigator.clipboard.writeText(createdKey.secret)}><Copy size={15} />{t('copy')}</button><button className="secondary-btn" onClick={() => setCreatedKey(null)}>{t('close')}</button></div></Modal>}
-    {preview && <Modal title={preview.title} className="interface-preview-modal" onClose={() => setPreview(null)}><div className="interface-preview-body">{preview.content}</div><div className="modal-actions"><button className="secondary-btn" onClick={() => setPreview(null)}>{t('close')}</button></div></Modal>}
+    </MotionContent>
+    <Presence>{createdKey && <Modal title={t('interfaceKeyCreated')} onClose={() => setCreatedKey(null)}><p className="modal-copy">{t('interfaceKeyOneTime')}</p><code className="interface-secret">{createdKey.secret}</code><div className="modal-actions"><button className="primary-btn" onClick={() => void navigator.clipboard.writeText(createdKey.secret)}><Copy size={15} />{t('copy')}</button><button className="secondary-btn" onClick={() => setCreatedKey(null)}>{t('close')}</button></div></Modal>}</Presence>
+    <Presence>{preview && <Modal title={preview.title} className="interface-preview-modal" onClose={() => setPreview(null)}><div className="interface-preview-body">{preview.content}</div><div className="modal-actions"><button className="secondary-btn" onClick={() => setPreview(null)}>{t('close')}</button></div></Modal>}</Presence>
   </div>
 }
 

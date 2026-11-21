@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { MotionContent, TabBar } from './Motion'
 import { useTranslation } from 'react-i18next'
 import { ExternalLink, Image, Info, Languages, Palette, RefreshCw, SwatchBook } from 'lucide-react'
 import AppShell, { type ShellProps } from './AppShell'
@@ -23,10 +24,10 @@ export default function SettingsPage({ connection, ...props }: ShellProps & { co
 
   return <AppShell {...props} onRefresh={() => {}}>
     <div className="page-heading"><div><h1>{t('preferences')}</h1><p>{t('preferencesDescription')}</p></div></div>
-    <div className="settings-tabs" role="tablist" aria-label={t('preferences')}>
-      {tabs.map(({ id, label, icon: Icon }) => <button key={id} id={`settings-tab-${id}`} type="button" role="tab" aria-selected={tab === id} aria-controls={`settings-panel-${id}`} className={tab === id ? 'active' : ''} onClick={() => setTab(id)}><Icon size={16} /><span>{t(label)}</span></button>)}
-    </div>
-    <section id={`settings-panel-${tab}`} role="tabpanel" aria-labelledby={`settings-tab-${tab}`} className="settings-tab-panel">
+    <TabBar selectionKey={tab} className="settings-tabs" role="tablist" aria-label={t('preferences')}>
+      {tabs.map(({ id, label, icon: Icon }) => <button key={id} id={`settings-tab-${id}`} type="button" role="tab" aria-selected={tab === id} aria-controls={`settings-panel-${id}`} tabIndex={tab === id ? 0 : -1} className={tab === id ? 'active' : ''} onClick={() => setTab(id)}><Icon size={16} /><span>{t(label)}</span></button>)}
+    </TabBar>
+    <MotionContent motionKey={tab} id={`settings-panel-${tab}`} role="tabpanel" aria-labelledby={`settings-tab-${tab}`} className="settings-tab-panel">
       {tab === 'appearance' && <>
         <section className="preference-list" aria-label={t('settingsAppearance')}>
           <div className="preference-row"><div className="preference-icon"><Languages size={18} /></div><div className="preference-copy"><h2>{t('language')}</h2><p>{t('languageDescription')}</p></div><LanguageSwitcher /></div>
@@ -39,7 +40,7 @@ export default function SettingsPage({ connection, ...props }: ShellProps & { co
       </>}
       {tab === 'version' && <VersionSettings connection={connection} />}
       {tab === 'about' && <AboutSettings />}
-    </section>
+    </MotionContent>
   </AppShell>
 }
 

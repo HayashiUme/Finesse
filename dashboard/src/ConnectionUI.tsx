@@ -5,6 +5,8 @@ import ThemeSwitcher from './ThemeSwitcher'
 import LanguageSwitcher from './LanguageSwitcher'
 import type { Connection } from './types'
 import BrandLogo from './BrandLogo'
+import { createPortal } from 'react-dom'
+import { useIsPresent } from './Motion'
 
 export function ConnectionFields({ value, onChange }: { value: Connection; onChange: (value: Connection) => void }) {
   const { t } = useTranslation()
@@ -27,6 +29,7 @@ export function ServerSetup({ initial, error, busy, onConnect, onSave }: { initi
 
 export function Modal({ title, children, onClose, className }: { title: string; children: React.ReactNode; onClose: () => void; className?: string }) {
   const { t } = useTranslation()
+  const present = useIsPresent()
   const panel = useRef<HTMLElement>(null)
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null
@@ -35,7 +38,7 @@ export function Modal({ title, children, onClose, className }: { title: string; 
     panel.current?.focus()
     return () => { document.body.style.overflow = overflow; if (previous?.isConnected) previous.focus() }
   }, [])
-  return <div className={`modal-backdrop ${className ? `${className}-backdrop` : ''}`} onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}><section ref={panel} tabIndex={-1} className={`settings-modal ${className ?? ''}`} role="dialog" aria-modal="true" aria-label={title} onKeyDown={e => {
+  return createPortal(<div className={`modal-backdrop ${className ? `${className}-backdrop` : ''} ${present ? 'is-entering' : 'is-exiting'}`} aria-hidden={!present || undefined} onMouseDown={e => { if (present && e.target === e.currentTarget) onClose() }}><section ref={panel} tabIndex={-1} className={`settings-modal ${className ?? ''}`} role="dialog" aria-modal="true" aria-label={title} onKeyDown={e => {
     if (e.key === 'Escape') onClose()
     if (e.key === 'Tab') {
       const nodes = Array.from(panel.current?.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [href]') ?? []).filter(node => !node.closest('fieldset:disabled'))
@@ -43,6 +46,6 @@ export function Modal({ title, children, onClose, className }: { title: string; 
       if (e.shiftKey && (document.activeElement === first || document.activeElement === panel.current)) { e.preventDefault(); last?.focus() }
       else if (!e.shiftKey && (document.activeElement === last || document.activeElement === panel.current)) { e.preventDefault(); first?.focus() }
     }
-  }}><div className="modal-head"><div><span className="modal-kicker">{t('footerBrand')}</span><h2>{title}</h2></div><button className="icon-btn" onClick={onClose} title={t('close')} aria-label={t('close')}><X size={18} /></button></div>{children}</section></div>
+  }}><div className="modal-head"><div><span className="modal-kicker">{t('footerBrand')}</span><h2>{title}</h2></div><button className="icon-btn" onClick={onClose} title={t('close')} aria-label={t('close')}><X size={18} /></button></div>{children}</section></div>, document.body)
 }
 
