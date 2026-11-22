@@ -1,5 +1,5 @@
 import { LocalizedError } from './i18n'
-import type { AuditEntry, Connection, Snapshot, AuthUser, AuthChallenge, LoginResponse, ManagedUser, ReportFeed, BanFeed, BanRequest, CommandResult, ServerInfo, PluginInfo } from './types'
+import type { AuditEntry, Connection, Snapshot, AuthUser, AuthChallenge, LoginResponse, ManagedUser, ReportFeed, BanFeed, BanRequest, CommandResult, ServerInfo, PluginInfo, ExtensionSummary, ExtensionPageData } from './types'
 
 export function normalizeConnection(value: Connection, enforceHttps = true): Connection {
   const name = value.name.trim()
@@ -170,3 +170,9 @@ export const setPluginEnabled = async (connection: Connection, id: string, enabl
   JSON.parse(await request(connection, `/api/v1/plugins/${encodeURIComponent(id)}/${enabled ? 'enable' : 'disable'}`, {}, true)) as PluginInfo
 export const deletePlugin = async (connection: Connection, id: string) =>
   JSON.parse(await request(connection, `/api/v1/plugins/${encodeURIComponent(id)}`, undefined, 'DELETE')) as PluginInfo
+
+export const fetchExtensions = (connection: Connection, signal?: AbortSignal) => getJson<ExtensionSummary[]>(connection, '/api/v1/extensions', signal)
+export const fetchExtensionPage = (connection: Connection, pluginId: string, pageId: string, signal?: AbortSignal) =>
+  getJson<ExtensionPageData>(connection, `/api/v1/extensions/${encodeURIComponent(pluginId)}/pages/${encodeURIComponent(pageId)}`, signal)
+export const runExtensionAction = (connection: Connection, pluginId: string, actionId: string, payload: object = {}) =>
+  request(connection, `/api/v1/extensions/${encodeURIComponent(pluginId)}/actions/${encodeURIComponent(actionId)}`, payload, true)

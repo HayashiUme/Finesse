@@ -1,7 +1,7 @@
 import { MotionContent, Presence } from './Motion'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Check, ChevronDown, ClipboardList, Gamepad2, LayoutDashboard, LogOut, Megaphone, Network, Plug, Plus, RefreshCw, Server, Settings2, ShieldCheck, UserRoundCog, Users, Workflow } from 'lucide-react'
+import { Blocks, Check, ChevronDown, ClipboardList, Gamepad2, LayoutDashboard, LogOut, Megaphone, Network, Plug, Plus, RefreshCw, Server, Settings2, ShieldCheck, UserRoundCog, Users, Workflow } from 'lucide-react'
 import { ConfigHelp, Modal } from './ConnectionUI'
 import type { AppView, SavedServer, WorkspaceView } from './types'
 import { useAuth } from './auth'
@@ -24,6 +24,7 @@ const navigation = [
   { id: 'audit', label: 'navAudit', icon: ClipboardList },
   { id: 'interface', label: 'navInterface', icon: Workflow },
   { id: 'clusters', label: 'navClusters', icon: Network },
+  { id: 'extensions', label: 'navExtensions', icon: Blocks },
 ] as const
 
 export default function AppShell({ children, live, connected, onRefresh, ...props }: ShellProps & {
@@ -39,10 +40,10 @@ export default function AppShell({ children, live, connected, onRefresh, ...prop
       <div className="brand"><div className="brand-mark"><BrandLogo /></div><div><strong>Finesse</strong><span>{t('brandControl')}</span></div></div>
       <ServerSwitcher {...props} />
       <div className="sidebar-scroll">
-      <nav aria-label={t('navOverview')}><button title={t('navDashboard')} className={`nav-link ${props.view === 'dashboard' ? 'active' : ''}`} aria-current={props.view === 'dashboard' ? 'page' : undefined} disabled={!props.current} onClick={() => props.onNavigate('dashboard')}><LayoutDashboard size={17} /><span>{t('navDashboard')}</span></button><button title={t('navClusters')} className={`nav-link ${props.view === 'clusters' ? 'active' : ''}`} aria-current={props.view === 'clusters' ? 'page' : undefined} onClick={() => props.onNavigate('clusters')}><Network size={17} /><span>{t('navClusters')}</span></button></nav>
+      <nav aria-label={t('navOverview')}><button title={t('navDashboard')} className={`nav-link ${props.view === 'dashboard' ? 'active' : ''}`} aria-current={props.view === 'dashboard' ? 'page' : undefined} disabled={!props.current} onClick={() => props.onNavigate('dashboard')}><LayoutDashboard size={17} /><span>{t('navDashboard')}</span></button><button title={t('navClusters')} className={`nav-link ${props.view === 'clusters' ? 'active' : ''}`} aria-current={props.view === 'clusters' ? 'page' : undefined} onClick={() => props.onNavigate('clusters')}><Network size={17} /><span>{t('navClusters')}</span></button><button title={t('navExtensions')} className={`nav-link ${props.view === 'extensions' ? 'active' : ''}`} aria-current={props.view === 'extensions' ? 'page' : undefined} disabled={!props.current} onClick={() => props.onNavigate('extensions')}><Blocks size={17} /><span>{t('navExtensions')}</span></button></nav>
       <nav aria-label={t('management')}><button title={t('navServers')} className={`nav-link ${props.view === 'servers' ? 'active' : ''}`} aria-current={props.view === 'servers' ? 'page' : undefined} onClick={props.onDirectory}><Server size={17} /><span>{t('navServers')}</span><em>{props.servers.length}</em></button></nav>
       <div className="nav-caption">{t('workspace')}</div>
-      <nav aria-label={t('workspace')}>{navigation.filter(item => item.id !== 'dashboard' && item.id !== 'clusters').map(({ id, label, icon: Icon }) => <button key={id} title={t(label)} disabled={!props.current} className={`nav-link ${props.view === id ? 'active' : ''}`} aria-current={props.view === id ? 'page' : undefined} onClick={() => props.onNavigate(id)}><Icon size={17} /><span>{t(label)}</span></button>)}</nav>
+      <nav aria-label={t('workspace')}>{navigation.filter(item => item.id !== 'dashboard' && item.id !== 'clusters' && item.id !== 'extensions').map(({ id, label, icon: Icon }) => <button key={id} title={t(label)} disabled={!props.current} className={`nav-link ${props.view === id ? 'active' : ''}`} aria-current={props.view === id ? 'page' : undefined} onClick={() => props.onNavigate(id)}><Icon size={17} /><span>{t(label)}</span></button>)}</nav>
       <div className="nav-caption section-caption">{t('management')}</div>
       <button className={`nav-link ${props.view === 'account' ? 'active' : ''}`} title={t('accountSettings')} aria-current={props.view === 'account' ? 'page' : undefined} disabled={!props.current} onClick={props.onAccount}><UserRoundCog size={17} /><span>{t('accountSettings')}</span></button>
       <button className={`nav-link ${props.view === 'settings' ? 'active' : ''}`} title={t('preferences')} onClick={props.onSettings}><Settings2 size={17} /><span>{t('preferences')}</span></button>

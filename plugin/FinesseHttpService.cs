@@ -17,6 +17,7 @@ public sealed class FinesseHttpService : BackgroundService
     private readonly ManagementService _management;
     private readonly PluginManagementService? _plugins;
     private readonly InterfaceService _interfaces;
+    private readonly ExtensionPluginService _extensions;
     private readonly ILogger<FinesseHttpService> _logger;
     private readonly HttpListener _listener = new();
 
@@ -28,6 +29,7 @@ public sealed class FinesseHttpService : BackgroundService
         ILogger<FinesseHttpService> logger,
         ReportService reports,
         InterfaceService interfaces,
+        ExtensionPluginService extensions,
         PluginManagementService? plugins = null)
     {
         _options = options;
@@ -35,6 +37,7 @@ public sealed class FinesseHttpService : BackgroundService
         _snapshots = snapshots;
         _reports = reports;
         _interfaces = interfaces;
+        _extensions = extensions;
         _management = management;
         _plugins = plugins;
         _logger = logger;
@@ -296,6 +299,32 @@ public sealed class FinesseHttpService : BackgroundService
         else if (request.HttpMethod == "GET" && path == "/api/v1/plugins")
         {
             await WriteJsonAsync(context.Response, _plugins?.GetPlugins() ?? []);
+        }
+        else if (request.HttpMethod == "GET" && path == "/api/v1/extensions")
+        {
+            await WriteJsonAsync(context.Response, _extensions.List());
+        }
+        else if (request.HttpMethod == "GET" && TryParseExtensionPage(path, out var extensionId, out var extensionPageId))
+        {
+            await WriteJsonAsync(context.Response, _extensions.LoadPage(extensionId, extensionPageId));
+        }
+        else if (request.HttpMethod == "POST" && TryParseExtensionAction(path, out extensionId, out var extensionActionId))
+        {
+            var action = _extensions.GetAction(extensionId, extensionActionId);
+            if (action.Mutating) RequireSuperAdmin(user);
+            var payload = await ReadJsonElementAsync(request, 64_000, cancellationToken);
+            try
+            {
+                var result = _extensions.RunAction(extensionId, extensionActionId, payload);
+                _management.RecordExternalAction("extensionAction", $"{extensionId}/{extensionActionId}", true, "Completed");
+                await WriteJsonAsync(context.Response, result);
+            }
+            catch (Exception ex)
+            {
+                _management.RecordExternalAction("extensionAction", $"{extensionId}/{extensionActionId}", false,
+                    ex is ManagementException ? ex.Message : "Operation failed");
+                throw;
+            }
         }
         else if (request.HttpMethod == "GET" && path == "/api/v1/interface")
         {
@@ -651,6 +680,44 @@ public sealed class FinesseHttpService : BackgroundService
         code = segments[3];
         action = segments[4];
         return true;
+    }
+
+    private static bool TryParseExtensionPage(string path, out string pluginId, out string pageId)
+    {
+        pluginId = pageId = string.Empty;
+        var segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        if (segments.Length != 6 || segments[0] != "api" || segments[1] != "v1" || segments[2] != "extensions" || segments[4] != "pages") return false;
+        pluginId = Uri.UnescapeDataString(segments[3]);
+        pageId = Uri.UnescapeDataString(segments[5]);
+        return true;
+    }
+
+    private static bool TryParseExtensionAction(string path, out string pluginId, out string actionId)
+    {
+        pluginId = actionId = string.Empty;
+        var segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        if (segments.Length != 6 || segments[0] != "api" || segments[1] != "v1" || segments[2] != "extensions" || segments[4] != "actions") return false;
+        pluginId = Uri.UnescapeDataString(segments[3]);
+        actionId = Uri.UnescapeDataString(segments[5]);
+        return true;
+    }
+
+    private static async Task<JsonElement> ReadJsonElementAsync(HttpListenerRequest request, int maxBytes, CancellationToken cancellationToken)
+    {
+        if (request.ContentLength64 > maxBytes) throw new ManagementException(413, "requestTooLarge");
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        deadline.CancelAfter(TimeSpan.FromSeconds(10));
+        using var stream = new MemoryStream();
+        var buffer = new byte[8192];
+        while (true)
+        {
+            var read = await request.InputStream.ReadAsync(buffer.AsMemory(), deadline.Token);
+            if (read == 0) break;
+            if (stream.Length + read > maxBytes) throw new ManagementException(413, "requestTooLarge");
+            await stream.WriteAsync(buffer.AsMemory(0, read), deadline.Token);
+        }
+        using var document = JsonDocument.Parse(stream.ToArray(), new JsonDocumentOptions { MaxDepth = 16 });
+        return document.RootElement.Clone();
     }
 
     private void AddCors(HttpListenerContext context)

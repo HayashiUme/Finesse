@@ -46,7 +46,7 @@ export type Connection = { name: string; baseUrl: string; apiKey?: string; token
 
 export type SavedServer = Connection & { id: string }
 export type ServerRegistry = { version: 1; servers: SavedServer[]; activeServerId: string | null }
-export type WorkspaceView = 'dashboard' | 'players' | 'games' | 'moderation' | 'messages' | 'plugins' | 'audit' | 'interface' | 'clusters'
+export type WorkspaceView = 'dashboard' | 'players' | 'games' | 'moderation' | 'messages' | 'plugins' | 'audit' | 'interface' | 'clusters' | 'extensions'
 export type AppView = WorkspaceView | 'settings' | 'servers' | 'login' | 'account'
 
 export type AuditEntry = { timestamp: string; action: string; target: string; success: boolean; detail: string; location?: string | null }
@@ -64,3 +64,8 @@ export type BanRequest = { kind: 'ip' | 'friendCode'; value: string; reason: str
 export type CommandResult = { delivered: number; skipped: number; failed: number }
 export type ServerInfo = { runtime: string; operatingSystem: string; architecture: string; processId: number; processorCount: number; serverVersion: string | null; apiAssemblyVersion: string }
 export type PluginInfo = { id: string; name: string; author: string; version: string; enabled: boolean; filePresent: boolean | null; fileName: string | null; canManage: boolean }
+export type ExtensionSummary = { id: string; name: string; version: string; description: string; pages: ExtensionPage[]; actions: ExtensionAction[] }
+export type ExtensionPage = { id: string; title: string; description?: string | null; handler: string; sections: ExtensionSection[] }
+export type ExtensionSection = { type: 'stats' | 'table' | 'json'; title: string; dataPath?: string | null; columns?: string[] | null }
+export type ExtensionAction = { id: string; label: string; handler: string; mutating: boolean; confirm?: string | null }
+export type ExtensionPageData = { pluginId: string; pageId: string; data: unknown }
