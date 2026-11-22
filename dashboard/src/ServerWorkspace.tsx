@@ -18,8 +18,8 @@ import type { Game, Player, Snapshot, Connection } from './types'
 import './telemetry.css'
 import { useAuth } from './auth'
 
-const titles = { dashboard: 'navDashboard', players: 'titlePlayers', games: 'titleGames', audit: 'navAudit', moderation: 'navModeration', messages: 'navMessages', plugins: 'navPlugins', interface: 'navInterface', clusters: 'navClusters', extensions: 'navExtensions' } as const
-const descriptions = { players: 'managePlayers', games: 'manageGames', audit: 'auditDescription', moderation: 'moderationDescription', messages: 'messagesDescription', plugins: 'pluginsDescription', interface: 'interfacePageDescription', clusters: 'clusterDescription', extensions: 'extensionsDescription' } as const
+const titles = { dashboard: 'navDashboard', players: 'titlePlayers', games: 'titleGames', audit: 'navAudit', moderation: 'navModeration', messages: 'navMessages', plugins: 'navPlugins', interface: 'navInterface', extensions: 'navExtensions' } as const
+const descriptions = { players: 'managePlayers', games: 'manageGames', audit: 'auditDescription', moderation: 'moderationDescription', messages: 'messagesDescription', plugins: 'pluginsDescription', interface: 'interfacePageDescription', extensions: 'extensionsDescription' } as const
 const filters = [{ id: 'all', label: 'filterAll' }, { id: 'lobby', label: 'lobby' }, { id: 'playing', label: 'playing' }] as const
 type Filter = typeof filters[number]['id']
 const gameStates: Record<string, Extract<TranslationKey, `state${string}`>> = { NotStarted: 'stateWaiting', Starting: 'stateStarting', Started: 'stateStarted', Ended: 'stateEnded', Destroyed: 'stateDestroyed' }
