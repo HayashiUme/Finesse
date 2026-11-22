@@ -52,6 +52,9 @@ async function request(connection: Connection, path: string, body?: object, post
         }
         if ([401, 404, 405].includes(response.status)) throw new LocalizedError('errorLoginUnavailable')
       }
+      if (response.status === 404 && ['Player not found', 'Room not found'].includes(detail.error ?? '')) {
+        throw new LocalizedError('clusterTargetMissing')
+      }
       if (response.status === 401 && connection.token) window.dispatchEvent(new CustomEvent('finesse-session-expired', { detail: connection.token }))
       const key = authErrorKeys[(detail.error ?? '') as keyof typeof authErrorKeys]
       if (key) throw new LocalizedError(key)

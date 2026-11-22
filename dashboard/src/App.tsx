@@ -11,6 +11,7 @@ import SettingsPage from './SettingsPage'
 import ServerWorkspace from './ServerWorkspace'
 import LoginPage from './LoginPage'
 import AccountSettings from './AccountSettings'
+import ClustersPage from './ClustersPage'
 import AppShell from './AppShell'
 import { AuthProvider, useAuth } from './auth'
 import type { Connection, SavedServer, ServerRegistry, WorkspaceView } from './types'
@@ -79,12 +80,14 @@ function Dashboard() {
 
   const activeSession = current ? auth.sessions[current.id] : null
   const connection = useMemo(() => current && activeSession ? { ...current, token: activeSession.token } : null, [current, activeSession?.token])
-  const renderedShell = !activeSession && view !== 'servers' && view !== 'settings' ? { ...shell, view: 'login' as const } : shell
+  const renderedShell = !activeSession && view !== 'servers' && view !== 'settings' && view !== 'clusters' ? { ...shell, view: 'login' as const } : shell
 
   if (!registry.servers.length) return <ServerSetup initial={emptyConnection} error={error ? errorMessage(error) : ''} busy={busy} onConnect={value => void save(value, true)} onSave={value => void save(value, false)} />
 
   if (auth.checking) return <div className="auth-loading"><LoaderCircle className="spin" /> {t('checkingSession')}</div>
-  return <>{view === 'servers' || !current
+  return <>{view === 'clusters'
+    ? <ClustersPage {...shell} />
+    : view === 'servers' || !current
     ? <ServersPage {...shell} onRemove={server => { setError(null); setRemoving(server) }} />
     : view === 'settings'
       ? <SettingsPage {...shell} connection={connection ?? undefined} />
