@@ -366,7 +366,7 @@ const en = {
   pluginDeleteFailed: 'Could not remove the plugin DLL. Check its file permissions and server logs.',
   errorHttp: 'The plugin returned an error ({{status}}). Check the Impostor log.',
   errorTimeout: 'The request exceeded 10 seconds. Check the plugin address, port and reverse proxy.',
-  errorNetwork: 'Cannot reach the plugin API. Check that Impostor loaded the plugin, the port is listening and CORS is configured. 127.0.0.1 refers to the computer running your browser.',
+  errorNetwork: 'The browser could not reach the plugin API. For a remote Dashboard, add its exact origin (scheme, hostname and port, with no path or trailing slash) to allowedOrigins in finesse.json, then restart Impostor. 127.0.0.1 refers to the computer running your browser.',
   errorJson: 'The plugin address did not return valid JSON. Check that this port serves the Finesse API.',
   errorSnapshot: 'Server data is incompatible with Finesse API v1. Update the plugin.',
   errorConnection: 'Connection failed. Check your server settings.',

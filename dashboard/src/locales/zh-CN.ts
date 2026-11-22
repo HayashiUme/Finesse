@@ -368,7 +368,7 @@ const zhCN: Record<keyof typeof en, string> = {
   pluginDeleteFailed: '无法移除插件 DLL，请检查文件权限和服务器日志。',
   errorHttp: '插件返回错误 ({{status}})，请查看 Impostor 日志。',
   errorTimeout: '连接超过 10 秒，请检查插件地址、端口和反向代理。',
-  errorNetwork: '无法访问插件 API。请确认 Impostor 已加载插件、端口正在监听，并检查跨域设置。127.0.0.1 指浏览器所在的电脑。',
+  errorNetwork: '浏览器无法访问插件 API。远程仪表盘需要把它的完整来源（协议、域名和端口，不带路径或末尾斜杠）加入 finesse.json 的 allowedOrigins，然后重启 Impostor。127.0.0.1 指浏览器所在的电脑。',
   errorJson: '插件地址返回的不是有效 JSON，请确认端口指向 Finesse API。',
   errorSnapshot: '服务器返回的数据与 Finesse API v1 不兼容，请更新插件。',
   errorConnection: '连接失败，请检查服务器设置。',
