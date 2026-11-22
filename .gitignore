@@ -25,3 +25,4 @@ docs/*
 !docs/api-v2.md
 !docs/docker-troubleshooting.md
 tools/
+examples/rauter-cluster/

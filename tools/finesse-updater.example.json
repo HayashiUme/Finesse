@@ -1,9 +1,0 @@
-{
-  "channel": "stable",
-  "installDirectory": "./site",
-  "pollSeconds": 3600,
-  "healthUrl": "https://panel.example.com/service-worker.js",
-  "healthTimeoutSeconds": 60,
-  "restartCommand": [],
-  "restartTimeoutSeconds": 120
-}
