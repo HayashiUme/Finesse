@@ -60,7 +60,7 @@ export default function ExtensionsPanel({ connection, canManage }: { connection:
   }
 
   return <section className="extension-workspace">
-    <div className="extension-heading"><div><h2>{t('extensionsTitle')}</h2><p>{t('extensionsDescription')}</p></div><button className="tool-btn" title={t('refresh')} onClick={() => void extensions.refetch()} disabled={extensions.isFetching}><RefreshCw size={15} className={extensions.isFetching ? 'spin' : ''} /></button></div>
+    <div className="extension-heading"><div><h2>{t('extensionsTitle')}</h2></div><button className="tool-btn" title={t('refresh')} onClick={() => void extensions.refetch()} disabled={extensions.isFetching}><RefreshCw size={15} className={extensions.isFetching ? 'spin' : ''} /></button></div>
     {error && <div className="setup-error" role="alert">{errorMessage(error)}</div>}
     {extensions.isPending ? <div className="extension-empty"><LoaderCircle className="spin" />{t('checkingServer')}</div> : extensions.data?.length ? <div className="extension-grid">{extensions.data.map(plugin => <article className="extension-card" key={plugin.id}><div className="extension-card-icon"><Blocks size={18} /></div><div className="extension-card-copy"><h3>{plugin.name}</h3><span>{plugin.id} · v{plugin.version}</span><p>{plugin.description}</p></div><div className="extension-page-links">{plugin.pages.map(item => <button className="secondary-btn" key={item.id} onClick={() => setSelection({ plugin, page: item })}>{item.title}</button>)}</div></article>)}</div> : <div className="extension-empty"><Blocks size={22} /><span>{t('extensionsEmpty')}</span></div>}
   </section>

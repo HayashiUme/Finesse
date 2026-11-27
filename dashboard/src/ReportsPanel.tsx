@@ -22,7 +22,7 @@ export default function ReportsPanel({ connection }: { connection: Connection })
   const feed = query.data
   const reports = (feed?.reports ?? []).filter(r => (r.reporterName + ' ' + (r.reportedName ?? '') + ' ' + r.gameCode).toLocaleLowerCase().includes(search.toLocaleLowerCase()))
   return <section className="dashboard-panel reports-panel">
-    <div className="dashboard-panel-head"><div><h2><Flag size={15} />{t('playerReports')}<span className="count-tag">{feed?.reports.length ?? '—'}</span></h2><p>{t('playerReportsDescription')}</p></div><label className="search-box"><Search size={15} /><input aria-label={t('searchReports')} placeholder={t('searchReports')} value={search} onChange={e => setSearch(e.target.value)} /></label></div>
+    <div className="dashboard-panel-head"><div><h2><Flag size={15} />{t('playerReports')}<span className="count-tag">{feed?.reports.length ?? '—'}</span></h2></div><label className="search-box"><Search size={15} /><input aria-label={t('searchReports')} placeholder={t('searchReports')} value={search} onChange={e => setSearch(e.target.value)} /></label></div>
     {query.isError && <div className="report-warning" role="status">{t('reportsUnavailable')} {errorMessage(query.error)}</div>}
     {feed && !feed.available && <div className="report-warning" role="status">{t('reportsReceptionUnavailable')}</div>}
     {feed && !feed.persistenceAvailable && <div className="report-warning" role="status">{t('reportsStorageUnavailable')}</div>}

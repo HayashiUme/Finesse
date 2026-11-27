@@ -36,7 +36,7 @@ export default function AppShell({ children, live, connected, onRefresh, ...prop
   const account = props.current ? auth.sessions[props.current.id]?.user : undefined
   return <div className="app-shell">
     <aside className="sidebar">
-      <div className="brand"><div className="brand-mark"><BrandLogo /></div><div><strong>Finesse</strong><span>{t('brandControl')}</span></div></div>
+      <div className="brand"><div className="brand-mark"><BrandLogo /></div><strong>Finesse</strong></div>
       <ServerSwitcher {...props} />
       <div className="sidebar-scroll">
       <nav aria-label={t('navOverview')}><button title={t('navDashboard')} className={`nav-link ${props.view === 'dashboard' ? 'active' : ''}`} aria-current={props.view === 'dashboard' ? 'page' : undefined} disabled={!props.current} onClick={() => props.onNavigate('dashboard')}><LayoutDashboard size={17} /><span>{t('navDashboard')}</span></button><button title={t('navExtensions')} className={`nav-link ${props.view === 'extensions' ? 'active' : ''}`} aria-current={props.view === 'extensions' ? 'page' : undefined} disabled={!props.current} onClick={() => props.onNavigate('extensions')}><Blocks size={17} /><span>{t('navExtensions')}</span></button></nav>

@@ -38,7 +38,7 @@ export default function PluginsPanel({ connection, canManage }: { connection: Co
   }
 
   return <section className="section-block plugins-panel">
-    <div className="section-head"><div><div className="section-title"><h2>{t('navPlugins')}</h2>{query.data && <span className="count-tag">{query.data.length}</span>}</div><p>{t('pluginsDescription')}</p></div><button className="tool-btn" title={t('refresh')} aria-label={t('refresh')} onClick={() => void query.refetch()} disabled={query.isFetching}><RefreshCw size={15} /></button></div>
+    <div className="section-head"><div><div className="section-title"><h2>{t('navPlugins')}</h2>{query.data && <span className="count-tag">{query.data.length}</span>}</div></div><button className="tool-btn" title={t('refresh')} aria-label={t('refresh')} onClick={() => void query.refetch()} disabled={query.isFetching}><RefreshCw size={15} /></button></div>
     {!canManage && <div className="plugin-admin-note"><ShieldAlert size={16} /><span>{t('pluginAdminOnly')}</span></div>}
     {mutation.isError && <div className="setup-error" role="alert">{errorMessage(mutation.error)}</div>}
     {notice && <p className="plugin-notice" role="status">{notice}</p>}

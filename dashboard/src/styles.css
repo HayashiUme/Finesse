@@ -51,3 +51,6 @@ select option{background:var(--surface);color:var(--ink)}
 .theme-switcher select:focus-visible{outline:2px solid var(--focus);outline-offset:3px;border-radius:2px}
 @media(max-width:700px){.top-actions{gap:5px}.top-actions .theme-switcher{gap:3px;padding:5px}.top-actions .theme-switcher>svg{display:none}.top-actions .theme-switcher select{font-size:10px;max-width:68px}.breadcrumbs{flex-basis:0}.breadcrumbs b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.setup-appearance{gap:6px}.setup-top{flex-wrap:wrap;height:auto;min-height:62px;padding:12px 0;gap:8px}.setup-appearance .theme-switcher select{max-width:90px}.setup-top>span{display:none}}
 @media(max-width:480px){.topbar{justify-content:flex-end}.breadcrumbs{display:none}}
+
+/* Keep the connection form centered after removing the promotional intro column. */
+.setup-layout{grid-template-columns:minmax(0,430px);justify-content:center}

@@ -62,7 +62,7 @@ export function ModerationPanel({ connection }: { connection: Connection }) {
     finally { setPending(false) }
   }
   return <div className="management-stack"><section className="dashboard-panel bans-panel">
-    <div className="dashboard-panel-head"><div><h2><ShieldCheck size={18} />{t('serverBans')}</h2><p>{t('serverBansDescription')}</p></div><button className="primary-btn" disabled={!query.data?.available || query.isError} onClick={() => setEditor(true)}><Plus size={15} />{t('addServerBan')}</button></div>
+    <div className="dashboard-panel-head"><div><h2><ShieldCheck size={18} />{t('serverBans')}</h2></div><button className="primary-btn" disabled={!query.data?.available || query.isError} onClick={() => setEditor(true)}><Plus size={15} />{t('addServerBan')}</button></div>
     <div className="management-search"><label className="search-box"><Search size={15} /><input aria-label={t('searchBans')} placeholder={t('searchBans')} value={search} onChange={event => setSearch(event.target.value)} /></label></div>
     {(error != null || query.isError) && <div className="setup-error" role="alert">{errorMessage(error ?? query.error)}</div>}
     {query.data && !query.data.available && <p className="report-warning">{t('banStoreUnavailable')}</p>}
@@ -100,14 +100,14 @@ export function MessageComposer({ connection, code }: { connection: Connection; 
 export function MessagesPanel({ connection, games }: { connection: Connection; games: Game[] }) {
   const { t } = useTranslation()
   const [code, setCode] = useState('')
-  return <section className="dashboard-panel messages-panel"><div className="dashboard-panel-head"><div><h2><Megaphone size={18} />{t('navMessages')}</h2><p>{t('messagesDescription')}</p></div></div><div className="management-body"><label className="message-destination">{t('messageDestination')}<select value={code} onChange={event => setCode(event.target.value)}><option value="">{t('allRooms')}</option>{games.map(game => <option key={game.code} value={game.code}>{game.code} · {game.hostName ?? t('unknown')}</option>)}{code && !games.some(game => game.code === code) && <option value={code}>{code} · {t('roomOffline')}</option>}</select></label><MessageComposer key={code} connection={connection} code={code || undefined} /></div></section>
+  return <section className="dashboard-panel messages-panel"><div className="dashboard-panel-head"><div><h2><Megaphone size={18} />{t('navMessages')}</h2></div></div><div className="management-body"><label className="message-destination">{t('messageDestination')}<select value={code} onChange={event => setCode(event.target.value)}><option value="">{t('allRooms')}</option>{games.map(game => <option key={game.code} value={game.code}>{game.code} · {game.hostName ?? t('unknown')}</option>)}{code && !games.some(game => game.code === code) && <option value={code}>{code} · {t('roomOffline')}</option>}</select></label><MessageComposer key={code} connection={connection} code={code || undefined} /></div></section>
 }
 
 export function ServerInfoPanel({ connection }: { connection: Connection }) {
   const { t } = useTranslation()
   const query = useQuery({ queryKey: ['server-info', connection], queryFn: ({ signal }) => fetchServerInfo(connection, signal), retry: false })
   const data = query.data
-  return <section className="dashboard-panel system-panel"><div className="dashboard-panel-head"><div><h2><Info size={18} />{t('navSystem')}</h2><p>{t('systemDescription')}</p></div></div>{query.isError ? <p className="setup-error" role="alert">{errorMessage(query.error)}</p> : !data ? <div className="dashboard-empty">{t('loadingServerInfo')}</div> : <dl className="system-grid">{[
+  return <section className="dashboard-panel system-panel"><div className="dashboard-panel-head"><div><h2><Info size={18} />{t('navSystem')}</h2></div></div>{query.isError ? <p className="setup-error" role="alert">{errorMessage(query.error)}</p> : !data ? <div className="dashboard-empty">{t('loadingServerInfo')}</div> : <dl className="system-grid">{[
     [t('serverBuild'), data.serverVersion], [t('runtime'), data.runtime], [t('operatingSystem'), data.operatingSystem],
     [t('architecture'), data.architecture], [t('processId'), data.processId], [t('logicalProcessors'), data.processorCount],
     [t('apiAssembly'), data.apiAssemblyVersion],

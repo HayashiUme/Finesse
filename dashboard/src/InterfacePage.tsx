@@ -67,32 +67,32 @@ export default function InterfacePage({ connection, canManage }: { connection: C
     {!canManage && <section className="interface-card"><div className="interface-card-empty"><LockKeyhole size={19} /><span>{t('interfaceSuperAdminOnly')}</span></div></section>}
 
     {canManage && tab === 'keys' && <>
-      <section className="interface-card"><div className="interface-card-heading"><span className="interface-card-icon"><KeyRound size={17} /></span><div><h2>{t('interfaceKeysTitle')}</h2><p>{t('interfaceKeysDescription')}</p></div></div>
+      <section className="interface-card"><div className="interface-card-heading"><span className="interface-card-icon"><KeyRound size={17} /></span><div><h2>{t('interfaceKeysTitle')}</h2></div></div>
         <form className="interface-key-form" onSubmit={event => { event.preventDefault(); createKey.mutate() }}>
           <label className="field-label">{t('interfaceKeyName')}<input value={keyName} maxLength={64} onChange={event => setKeyName(event.target.value)} placeholder={t('interfaceKeyNamePlaceholder')} required /></label>
           <fieldset className="interface-scopes"><legend>{t('interfaceKeyScopes')}</legend>{Object.entries(scopeNames).filter(([scope]) => scope !== 'x-api-games').map(([scope, label]) => <label key={scope}><input type="checkbox" checked={scopes.includes(scope)} onChange={() => toggleScope(scope)} /><span>{t(label)}</span><code>{scope === 'games' ? '/v2/api/games' : '/v2/api/monitor'}</code></label>)}</fieldset>
           <button className="primary-btn" disabled={createKey.isPending || !keyName.trim() || scopes.length === 0}>{createKey.isPending ? <LoaderCircle className="spin" size={15} /> : <Plus size={15} />}{t('interfaceCreateKey')}</button>
         </form>
       </section>
-      <section className="interface-card"><div className="interface-card-heading"><span className="interface-card-icon"><Shield size={17} /></span><div><h2>{t('interfaceKeyList')}</h2><p>{t('interfaceKeyListDescription')}</p></div></div>
+      <section className="interface-card"><div className="interface-card-heading"><span className="interface-card-icon"><Shield size={17} /></span><div><h2>{t('interfaceKeyList')}</h2></div></div>
         {settings.isPending ? <div className="interface-card-empty"><LoaderCircle className="spin" size={17} />{t('checkingServer')}</div> : settings.data?.apiKeys.length ? <div className="interface-key-grid">{settings.data.apiKeys.map(key => <article className="interface-key-card" key={key.id}><div className="interface-key-card-top"><div><b>{key.name}</b><code>{key.prefix}…</code></div><button className="icon-btn" title={t('interfaceRevokeKey')} aria-label={t('interfaceRevokeKey')} disabled={removeKey.isPending} onClick={() => { if (window.confirm(t('interfaceRevokeConfirm', { name: key.name }))) removeKey.mutate(key.id) }}><Trash2 size={15} /></button></div><div className="interface-key-scopes">{key.scopes.map(scope => <span key={scope}>{t(scopeNames[scope as keyof typeof scopeNames])}</span>)}</div><small>{t('interfaceKeyCreatedAt')} {new Date(key.createdAt).toLocaleDateString()}</small></article>)}</div> : <div className="interface-card-empty"><KeyRound size={19} /><span>{t('interfaceNoKeys')}</span></div>}
       </section>
       <div className="interface-note"><LockKeyhole size={15} /><span>{t('interfaceKeyOneTime')}</span></div>
     </>}
 
     {canManage && tab === 'endpoints' && <>
-      <section className="interface-card"><div className="interface-card-heading"><span className="interface-card-icon"><Workflow size={17} /></span><div><h2>{t('interfaceEndpointsTitle')}</h2><p>{t('interfaceEndpointsDescription')}</p></div></div>
+      <section className="interface-card"><div className="interface-card-heading"><span className="interface-card-icon"><Workflow size={17} /></span><div><h2>{t('interfaceEndpointsTitle')}</h2></div></div>
         <div className="interface-endpoint-grid">
-          <EndpointCard title="Games" path="/v2/api/games" scope="games" description={t('interfaceGamesSummary')} onPreview={() => showJsonPreview('GET /v2/api/games', gamesExample)} />
-          <EndpointCard title="Monitor" path="/v2/api/monitor" scope="monitor" description={t('interfaceMonitorSummary')} onPreview={() => showJsonPreview('GET /v2/api/monitor', monitorExample)} />
-          <EndpointCard title="X-API games" path="/x-api/games" scope="public" description={t('interfaceXApiSummary')} onPreview={() => showJsonPreview('GET /x-api/games', xApiPreview.data ?? xApiExample)} />
+          <EndpointCard title="Games" path="/v2/api/games" scope="games" onPreview={() => showJsonPreview('GET /v2/api/games', gamesExample)} />
+          <EndpointCard title="Monitor" path="/v2/api/monitor" scope="monitor" onPreview={() => showJsonPreview('GET /v2/api/monitor', monitorExample)} />
+          <EndpointCard title="X-API games" path="/x-api/games" scope="public" onPreview={() => showJsonPreview('GET /x-api/games', xApiPreview.data ?? xApiExample)} />
         </div>
       </section>
-      <section className="interface-card"><div className="interface-card-heading"><span className="interface-card-icon"><LockKeyhole size={17} /></span><div><h2>{t('interfaceCallingTitle')}</h2><p>{t('interfaceCallingDescription')}</p></div></div><pre className="interface-request-example">curl -H "X-Api-Key: sk-…" http://127.0.0.1:8097/v2/api/games</pre></section>
+      <section className="interface-card"><div className="interface-card-heading"><span className="interface-card-icon"><LockKeyhole size={17} /></span><div><h2>{t('interfaceCallingTitle')}</h2></div></div><pre className="interface-request-example">curl -H "X-Api-Key: sk-…" http://127.0.0.1:8097/v2/api/games</pre></section>
     </>}
 
     {canManage && tab === 'xapi' && <>
-      <section className="interface-card"><div className="interface-card-heading"><span className="interface-card-icon"><Globe2 size={17} /></span><div><h2>{t('interfaceXApiTitle')}</h2><p>{t('interfaceXApiDescription')}</p></div><span className={`interface-state ${xApi.enabled ? 'enabled' : ''}`}><i />{t(xApi.enabled ? 'interfaceEnabled' : 'interfaceDisabled')}</span></div>
+      <section className="interface-card"><div className="interface-card-heading"><span className="interface-card-icon"><Globe2 size={17} /></span><div><h2>{t('interfaceXApiTitle')}</h2></div><span className={`interface-state ${xApi.enabled ? 'enabled' : ''}`}><i />{t(xApi.enabled ? 'interfaceEnabled' : 'interfaceDisabled')}</span></div>
         <form className="interface-settings-form" onSubmit={event => { event.preventDefault(); saveXApi.mutate() }}>
           <label className="interface-toggle"><input type="checkbox" checked={xApi.enabled} onChange={event => setXApiDraft({ ...xApi, enabled: event.target.checked })} /><span><b>{t('interfaceXApiEnabled')}</b><small>{t('interfaceXApiEnabledDescription')}</small></span></label>
           <label className="interface-toggle"><input type="checkbox" checked={xApi.includePrivateGames} onChange={event => setXApiDraft({ ...xApi, includePrivateGames: event.target.checked })} /><span><b>{t('interfaceIncludePrivate')}</b><small>{t('interfaceIncludePrivateDescription')}</small></span></label>
@@ -102,7 +102,7 @@ export default function InterfacePage({ connection, canManage }: { connection: C
       </section>
     </>}
 
-    {canManage && tab === 'welcome' && <section className="interface-card"><div className="interface-card-heading"><span className="interface-card-icon"><FileCode2 size={17} /></span><div><h2>{t('interfaceHelloTitle')}</h2><p>{t('interfaceHelloDescription')}</p></div><span className={`interface-state ${settings.data?.helloPageEnabled ? 'enabled' : ''}`}><i />{t(settings.data?.helloPageEnabled ? 'interfaceHelloInstalled' : 'interfaceHelloDefault')}</span></div>
+    {canManage && tab === 'welcome' && <section className="interface-card"><div className="interface-card-heading"><span className="interface-card-icon"><FileCode2 size={17} /></span><div><h2>{t('interfaceHelloTitle')}</h2></div><span className={`interface-state ${settings.data?.helloPageEnabled ? 'enabled' : ''}`}><i />{t(settings.data?.helloPageEnabled ? 'interfaceHelloInstalled' : 'interfaceHelloDefault')}</span></div>
       <div className="interface-hello-toolbar"><label className="secondary-btn"><Upload size={15} />{t('interfaceImportHtml')}<input type="file" accept=".html,text/html" onChange={event => { void importHtml(event.target.files?.[0]); event.currentTarget.value = '' }} /></label><span>{html ? t('interfaceHtmlReady') : t('interfaceHtmlPlaceholderShort')}</span></div>
       <textarea className="interface-html-editor" value={html} onChange={event => setHtml(event.target.value)} maxLength={512_000} placeholder={t('interfaceHtmlPlaceholder')} spellCheck={false} />
       {pageError && <div className="setup-error">{pageError}</div>}
@@ -116,8 +116,8 @@ export default function InterfacePage({ connection, canManage }: { connection: C
   </div>
 }
 
-function EndpointCard({ title, path, scope, description, onPreview }: { title: string; path: string; scope: string; description: string; onPreview: () => void }) {
+function EndpointCard({ title, path, scope, onPreview }: { title: string; path: string; scope: string; onPreview: () => void }) {
   const { t } = useTranslation()
   const scopeLabel = scope === 'public' ? 'interfacePublic' : scopeNames[scope as keyof typeof scopeNames]
-  return <article className="interface-endpoint-card"><div className="interface-endpoint-top"><span className="interface-method">GET</span><span className="interface-endpoint-scope">{t(scopeLabel)}</span></div><h3>{title}</h3><code className="interface-endpoint-path">{path}</code><p>{description}</p><button className="secondary-btn" onClick={onPreview}><Braces size={14} />{t('interfacePreview')}</button></article>
+  return <article className="interface-endpoint-card"><div className="interface-endpoint-top"><span className="interface-method">GET</span><span className="interface-endpoint-scope">{t(scopeLabel)}</span></div><h3>{title}</h3><code className="interface-endpoint-path">{path}</code><button className="secondary-btn" onClick={onPreview}><Braces size={14} />{t('interfacePreview')}</button></article>
 }

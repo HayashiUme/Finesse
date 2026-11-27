@@ -53,10 +53,6 @@ function AboutSettings() {
     { label: 'githubProfile', detail: 'aboutProfileValue', href: 'https://github.com/HayashiUme' },
   ] as const
   return <div className="about-settings">
-    <section className="about-project">
-      <div className="about-project-icon"><Info size={20} /></div>
-      <div><span className="eyebrow">FINESSE</span><h2>{t('aboutProjectTitle')}</h2><p>{t('aboutProjectDescription')}</p><small>{t('aboutComponents')}</small></div>
-    </section>
     <nav className="about-links" aria-label={t('settingsAbout')}>
       {links.map(item => <a key={item.label} href={item.href} target="_blank" rel="noopener noreferrer"><span><b>{t(item.label)}</b><small>{t(item.detail)}</small></span><ExternalLink size={15} /></a>)}
     </nav>
