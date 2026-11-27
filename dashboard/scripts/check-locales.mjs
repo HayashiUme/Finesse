@@ -5,7 +5,7 @@ import ts from 'typescript'
 import { createInstance } from 'i18next'
 
 async function loadLocale(name) {
-  const source = await readFile(new URL(`../src/locales/${name}.ts`, import.meta.url), 'utf8')
+  const source = await readFile(new URL(`../src/localization/locales/${name}.ts`, import.meta.url), 'utf8')
   const { outputText } = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS } })
   const exports = {}
   vm.runInNewContext(outputText, { exports })

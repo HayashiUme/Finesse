@@ -14,12 +14,13 @@ function setup(initial = {}, failWrites = false, protocol = 'http:', href = `${p
     localStorage: { getItem: key => values.get(key) ?? null, setItem: (key, value) => { if (failWrites) throw Error('Storage full'); values.set(key, value) }, removeItem: key => values.delete(key) },
     fetch: async (url, options) => { calls.push({ url, options }); return response },
   }
-  const modules = { './i18n': { LocalizedError } }
-  for (const name of ['api', 'connections']) {
+  const localizationModule = { LocalizedError }
+  const modules = { '../localization/i18n.ts': localizationModule, '../../localization/i18n.ts': localizationModule }
+  for (const [name, sourcePath, modulePath] of [['api', '../src/lib/api.ts', '../../lib/api.ts'], ['connections', '../src/features/connections/connections.ts', '../../features/connections/connections.ts']]) {
     const module = { exports: {} }
-    const source = ts.transpileModule(readFileSync(new URL(`../src/${name}.ts`, import.meta.url), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText
+    const source = ts.transpileModule(readFileSync(new URL(sourcePath, import.meta.url), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText
     vm.runInNewContext(source, { ...context, module, exports: module.exports, require: id => modules[id] })
-    modules[`./${name}`] = module.exports
+    modules[`./${name}`] = module.exports; modules[modulePath] = module.exports
   }
   return { ...modules['./connections'], api: modules['./api'], values, calls }
 }
