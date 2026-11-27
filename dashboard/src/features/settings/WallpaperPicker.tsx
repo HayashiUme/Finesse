@@ -2,7 +2,7 @@ import { useRef, useState, useSyncExternalStore } from 'react'
 import { Image, RotateCcw, Upload } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
-const defaultWallpaper = '/images/acg-spring-meadow.jpg'
+const defaultWallpaper = '/images/miku-acg-background.jpg'
 const maxInputBytes = 12 * 1024 * 1024
 const maxStoredLength = 1_700_000
 type WallpaperError = 'imageType' | 'imageSize' | 'imageProcess' | 'imageRead' | 'wallpaperStorage'

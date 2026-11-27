@@ -2,12 +2,11 @@ import { useRef, useState, useSyncExternalStore } from 'react'
 import { Download, Image, RotateCcw, SwatchBook, Upload } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
-const defaultLogo = '/images/acg-finesseChan-icon.png'
-const defaultWallpaper = '/images/acg-spring-meadow.jpg'
+const defaultLogo = '/images/miku-acg-icon.png'
+const defaultWallpaper = '/images/miku-acg-background.jpg'
 type ThemeError = '' | 'themeExport' | 'themeInvalid' | 'themeImport' | 'logoInvalid' | 'logoTooLarge'
 const themes = [
-  { key: 'themeFinesse', name: 'Finesse', accent: '#c8a2c8', logo: defaultLogo, wallpaper: null },
-  { key: 'themeMiku', name: 'Hatsune Miku', accent: '#39c5bb', logo: '/images/miku-acg-icon.png', wallpaper: '/images/miku-acg-background.jpg' },
+  { key: 'themeMiku', name: 'Hatsune Miku', accent: '#39c5bb', logo: defaultLogo, wallpaper: defaultWallpaper },
 ] as const
 const maxLogoLength = 700_000
 

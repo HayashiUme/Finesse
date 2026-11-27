@@ -8,10 +8,10 @@
     name: 'finesse-theme-name',
   }
   const defaults = {
-    name: 'Finesse',
-    accent: '#c8a2c8',
-    logo: '/images/acg-finesseChan-icon.png',
-    wallpaper: null,
+    name: 'Hatsune Miku',
+    accent: '#39c5bb',
+    logo: '/images/miku-acg-icon.png',
+    wallpaper: '/images/miku-acg-background.jpg',
   }
   const validPreference = value => ['light', 'dark', 'system'].includes(value)
   const validColor = value => typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value)
@@ -32,6 +32,14 @@
     if (validImage(wallpaper)) appearance.wallpaper = wallpaper
     if (validImage(logo, 700_000)) appearance.logo = logo
     if (typeof name === 'string' && name.length > 0 && name.length <= 40) appearance.name = name
+    // Replace the former built-in Finesse character preset for existing browsers.
+    if (appearance.name === 'Finesse') {
+      appearance = { ...defaults }
+      persist(keys.name, appearance.name)
+      persist(keys.accent, appearance.accent)
+      persist(keys.logo, appearance.logo)
+      persist(keys.wallpaper, appearance.wallpaper)
+    }
   } catch { /* Keep defaults when browser storage is unavailable. */ }
 
   function persist(key, value) {
@@ -49,7 +57,7 @@
     root.dataset.appearanceName = appearance.name
     root.style.colorScheme = theme
     root.style.setProperty('--accent-color', appearance.accent)
-    root.style.setProperty('--wallpaper-image', appearance.wallpaper ? `url("${appearance.wallpaper}")` : "url('/images/acg-spring-meadow.jpg')")
+    root.style.setProperty('--wallpaper-image', appearance.wallpaper ? `url("${appearance.wallpaper}")` : "url('/images/miku-acg-background.jpg')")
     root.style.setProperty('--brand-image', `url("${appearance.logo}")`)
     document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'dark' ? '#171e1c' : '#f6f7f5')
     window.dispatchEvent(new Event('finesse-theme-change'))
