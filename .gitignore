@@ -27,3 +27,5 @@ docs/*
 tools/
 examples/rauter-cluster/
 !docs/extensions.md
+!docs/readmes/
+!docs/readmes/**
