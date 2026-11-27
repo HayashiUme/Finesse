@@ -11,6 +11,7 @@
 <p align="center">
   <img src="images/preview.png" alt="Finesse dashboard preview" />
 </p>
+
 ## Startup
 
 Start the dashboard with Docker Compose:
