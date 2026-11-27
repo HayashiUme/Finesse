@@ -47,14 +47,17 @@ jobs:
         run: npm ci && npm run test:i18n && npm run test:connections && npm run build
       - name: Build plugin
         working-directory: Finesse
-        run: dotnet build plugin/Finesse.Plugin.csproj --configuration Release -p:Version='${{ steps.version.outputs.full }}' -p:InformationalVersion='${{ steps.version.outputs.full }}'
+        run: |
+          dotnet build plugin/Impostor/Finesse.Plugin.csproj --configuration Release -p:Version='${{ steps.version.outputs.full }}' -p:InformationalVersion='${{ steps.version.outputs.full }}'
+          dotnet build plugin/Empostor/Finesse.Empostor.Plugin.csproj --configuration Release -p:Version='${{ steps.version.outputs.full }}' -p:InformationalVersion='${{ steps.version.outputs.full }}'
       - name: Package release assets
         working-directory: Finesse
         run: |
           mkdir -p package/dashboard
-          cp plugin/bin/Release/net10.0/Finesse.Plugin.dll package/Finesse.Plugin.dll
+          cp plugin/Impostor/bin/Release/net10.0/Finesse.Plugin.dll package/Finesse.Plugin.dll
+          cp plugin/Empostor/bin/Release/net10.0/Finesse.Empostor.Plugin.dll package/Finesse.Empostor.Plugin.dll
           cp -R dashboard/dist/. package/dashboard/
-          printf '{"version":"%s","pluginAsset":"Finesse.Plugin.dll","dashboardAsset":"Finesse-dashboard.zip"}\n' '${{ steps.version.outputs.full }}' > package/Finesse-update.json
+          printf '{"version":"%s","pluginAsset":"Finesse.Plugin.dll","empostorPluginAsset":"Finesse.Empostor.Plugin.dll","dashboardAsset":"Finesse-dashboard.zip"}\n' '${{ steps.version.outputs.full }}' > package/Finesse-update.json
           cd package && zip -qr ../Finesse-dashboard.zip dashboard
       - uses: softprops/action-gh-release@v2
         with:
@@ -66,6 +69,7 @@ jobs:
           files: |
             Finesse/Finesse-dashboard.zip
             Finesse/package/Finesse.Plugin.dll
+            Finesse/package/Finesse.Empostor.Plugin.dll
             Finesse/package/Finesse-update.json
       - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3

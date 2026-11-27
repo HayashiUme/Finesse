@@ -41,7 +41,9 @@ export default function VersionSettings({ connection }: { connection?: Connectio
   const tagVersion = release.data?.tag_name.replace(/^v/, '') ?? ''
   const panelUpdate = Boolean(tagVersion && isNewer(tagVersion, __FINESSE_VERSION__))
   const pluginUpdate = Boolean(tagVersion && plugin.data && isNewer(tagVersion, plugin.data.pluginVersion))
-  const pluginAsset = release.data?.assets.find(asset => asset.name === 'Finesse.Plugin.dll')
+  const pluginTarget = plugin.data?.pluginTarget ?? 'Impostor'
+  const pluginAssetName = pluginTarget === 'Empostor' ? 'Finesse.Empostor.Plugin.dll' : 'Finesse.Plugin.dll'
+  const pluginAsset = release.data?.assets.find(asset => asset.name === pluginAssetName)
 
   return <div className="version-settings">
     <section className="preference-list version-list" aria-label={t('settingsVersion')}>
@@ -52,7 +54,7 @@ export default function VersionSettings({ connection }: { connection?: Connectio
       <div className="section-head"><div><h2>{t('updateCheckTitle')}</h2><p>{t('updateCheckDescription')}</p></div></div>
       {release.isPending ? <div className="update-status"><LoaderCircle className="spin" size={17} /><span>{t('checkingUpdates')}</span></div> : release.isError ? <div className="update-status update-error"><CircleAlert size={17} /><span>{t('updateCheckUnavailable')}</span></div> : !release.data ? <div className="update-status"><CircleAlert size={17} /><span>{t('noReleasesFound')}</span></div> : <div className="version-results">
         {panelUpdate ? <div className="version-result"><div><b>{t('dashboardUpdate', { version: tagVersion })}</b><small>{t('dashboardAutoUpdate')}</small></div><RefreshCw size={16} /></div> : <div className="version-result version-current"><div><b>{t('dashboardVersion')}</b><small>{t('componentUpToDate')}</small></div><Check size={16} /></div>}
-        {pluginUpdate ? <div className="version-result version-result-plugin"><div><b>{t('pluginUpdate', { version: tagVersion })}</b><small>{pluginAsset ? t('pluginRestartRequired') : t('pluginAssetUnavailable')}</small></div>{pluginAsset && <a className="secondary-btn" href={pluginAsset.browser_download_url}><ArrowDownToLine size={15} />{t('downloadPlugin')}</a>}</div> : plugin.data ? <div className="version-result version-current"><div><b>{t('pluginVersion')}</b><small>{t('componentUpToDate')}</small></div><Check size={16} /></div> : null}
+        {pluginUpdate ? <div className="version-result version-result-plugin"><div><b>{t('pluginUpdate', { version: tagVersion })}</b><small>{pluginAsset ? t('pluginRestartRequired', { target: pluginTarget }) : t('pluginAssetUnavailable')}</small></div>{pluginAsset && <a className="secondary-btn" href={pluginAsset.browser_download_url}><ArrowDownToLine size={15} />{t('downloadPlugin')}</a>}</div> : plugin.data ? <div className="version-result version-current"><div><b>{t('pluginVersion')}</b><small>{t('componentUpToDate')}</small></div><Check size={16} /></div> : null}
         {release.data.published_at && <p className="version-release-date">{t('latestReleaseDate', { date: new Date(release.data.published_at).toLocaleString() })}</p>}
       </div>}
       <p className="version-channel-note">{t(development ? 'nightlyChannel' : 'stableChannel')}</p>

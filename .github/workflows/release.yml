@@ -49,15 +49,18 @@ jobs:
       - name: Build plugin
         if: ${{ steps.version.outputs.value }}
         working-directory: Finesse
-        run: dotnet build plugin/Finesse.Plugin.csproj --configuration Release -p:Version='${{ steps.version.outputs.value }}' -p:InformationalVersion='${{ steps.version.outputs.value }}'
+        run: |
+          dotnet build plugin/Impostor/Finesse.Plugin.csproj --configuration Release -p:Version='${{ steps.version.outputs.value }}' -p:InformationalVersion='${{ steps.version.outputs.value }}'
+          dotnet build plugin/Empostor/Finesse.Empostor.Plugin.csproj --configuration Release -p:Version='${{ steps.version.outputs.value }}' -p:InformationalVersion='${{ steps.version.outputs.value }}'
       - name: Package release assets
         if: ${{ steps.version.outputs.value }}
         working-directory: Finesse
         run: |
           mkdir -p package/dashboard
-          cp plugin/bin/Release/net10.0/Finesse.Plugin.dll package/Finesse.Plugin.dll
+          cp plugin/Impostor/bin/Release/net10.0/Finesse.Plugin.dll package/Finesse.Plugin.dll
+          cp plugin/Empostor/bin/Release/net10.0/Finesse.Empostor.Plugin.dll package/Finesse.Empostor.Plugin.dll
           cp -R dashboard/dist/. package/dashboard/
-          printf '{"version":"%s","pluginAsset":"Finesse.Plugin.dll","dashboardAsset":"Finesse-dashboard.zip"}\n' '${{ steps.version.outputs.value }}' > package/Finesse-update.json
+          printf '{"version":"%s","pluginAsset":"Finesse.Plugin.dll","empostorPluginAsset":"Finesse.Empostor.Plugin.dll","dashboardAsset":"Finesse-dashboard.zip"}\n' '${{ steps.version.outputs.value }}' > package/Finesse-update.json
           cd package && zip -qr ../Finesse-dashboard.zip dashboard
       - name: Create stable GitHub Release
         if: ${{ steps.version.outputs.value }}
@@ -71,6 +74,7 @@ jobs:
           files: |
             Finesse/Finesse-dashboard.zip
             Finesse/package/Finesse.Plugin.dll
+            Finesse/package/Finesse.Empostor.Plugin.dll
             Finesse/package/Finesse-update.json
       - name: Set up QEMU
         if: ${{ steps.version.outputs.value }}

@@ -27,6 +27,7 @@ export type Overview = {
   activeGames: number
   totalGames: number
   pluginVersion: string
+  pluginTarget?: 'Impostor' | 'Empostor'
   process?: ProcessMetrics
 }
 

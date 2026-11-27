@@ -1,9 +1,10 @@
 # Finesse
 
-Server management platform for Impostor.
+Server management platform for Impostor and Empostor.
 
 - `dashboard/`: React, TypeScript, and Vite dashboard.
-- `plugin/`: .NET 10 management plugin for Impostor.Api.
+- `plugin/Impostor/`: .NET 10 plugin referencing the local Impostor.Api project.
+- `plugin/Empostor/`: .NET 10 plugin referencing the Empostor.Api NuGet package.
 
 ## Docker Deployment
 
@@ -66,14 +67,14 @@ npm run build
 
 Configure the host to serve `index.html` as the fallback for client-side routes, and avoid long-lived caching for `index.html` and `service-worker.js`. For automatic updates on a static host, see [`docs/dashboard-updater.md`](docs/dashboard-updater.md); the updater needs to run on the host and be registered with its service manager or scheduler.
 
-## Impostor Plugin
+## Server Plugins
 
-1. Build or download `Finesse.Plugin.dll` and place it in the Impostor server's `plugins/` directory.
-2. Restart Impostor. The plugin creates `finesse.json` beside the Impostor executable.
+1. Use `Finesse.Plugin.dll` for Impostor, or `Finesse.Empostor.Plugin.dll` for Empostor. Place the matching DLL in that server's `plugins/` directory.
+2. Restart the server. The plugin creates `finesse.json` beside the server executable.
 3. Configure the plugin's `allowedOrigins` with the exact dashboard origin, such as `http://localhost:4173`, then restart Impostor after configuration changes.
 4. In Finesse, add the plugin API address. Use `http://127.0.0.1:8097` only when the browser runs on the same computer as Impostor; for remote access, use an HTTPS reverse proxy and enter its public URL.
 5. Sign in as **Super administrator** with the `apiKey` from `finesse.json`, or as **Administrator** with an account created by the super administrator.
 
-The dashboard container exposes only its web port. Impostor's management API defaults to port `8097`; the game's UDP port is separate. Finesse displays live server data and does not use demo data.
+The dashboard container exposes only its web port. The management API defaults to port `8097`; the game's UDP port is separate. Finesse displays live server data and does not use demo data.
 
-Plugin updates remain manual: download the DLL from the GitHub Release, replace the file in the Impostor `plugins/` directory, and restart Impostor.
+Plugin updates remain manual: download the DLL matching your server, replace it in that server's `plugins/` directory, and restart the server.

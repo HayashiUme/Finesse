@@ -38,5 +38,7 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
-      - run: dotnet build plugin/Finesse.Plugin.csproj --configuration Release
+      - run: dotnet build plugin/Impostor/Finesse.Plugin.csproj --configuration Release
+        working-directory: Finesse
+      - run: dotnet build plugin/Empostor/Finesse.Empostor.Plugin.csproj --configuration Release
         working-directory: Finesse
