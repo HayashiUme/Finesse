@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="../../images/miku-icon.png" alt="Finesse" width="128" />
+  <img src="images/miku-icon.png" alt="Finesse" width="128" />
 </p>
 
 <h1 align="center">Finesse</h1>
@@ -9,7 +9,7 @@
 ## Preview
 
 <p align="center">
-  <img src="../../images/preview.png" alt="Finesse dashboard preview" />
+  <img src="images/preview.png" alt="Finesse dashboard preview" />
 </p>
 ## Startup
 
