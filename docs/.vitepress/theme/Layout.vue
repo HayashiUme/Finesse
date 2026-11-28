@@ -40,7 +40,7 @@ const toggleTheme = () => { isDark.value = !isDark.value }
 </script>
 
 <template>
-  <div class="finesse-docs" :class="{ 'mobile-open': mobileOpen, 'is-home': frontmatter.layout === 'home' }">
+  <div class="finesse-docs" :style="{ '--wallpaper-image': `url(${withBase('/images/miku-acg-background.jpg')})` }" :class="{ 'mobile-open': mobileOpen, 'is-home': frontmatter.layout === 'home' }">
     <button v-if="mobileOpen" class="mobile-scrim" aria-label="Close navigation" @click="mobileOpen = false" />
     <aside class="docs-sidebar">
       <a class="brand" :href="withBase(localeRoot)" :aria-label="chinese ? 'Finesse 文档首页' : 'Finesse documentation home'">

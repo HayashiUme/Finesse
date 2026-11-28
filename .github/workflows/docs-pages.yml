@@ -20,6 +20,8 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      FINESSE_BASE_PATH: ${{ vars.FINESSE_BASE_PATH || '/Finesse/' }}
     steps:
       - name: Checkout documentation
         uses: actions/checkout@v4

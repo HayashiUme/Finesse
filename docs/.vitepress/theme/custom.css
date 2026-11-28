@@ -27,8 +27,8 @@
 html, body, #app { min-width: 320px; min-height: 100%; margin: 0; }
 body { position: relative; isolation: isolate; background: #f3f7f5; color: var(--f-ink); }
 .dark body { background: #111a17; }
-body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none; background: linear-gradient(rgba(245,250,248,.82),rgba(245,250,248,.88)),url('/images/miku-acg-background.jpg') center/cover fixed; }
-.dark body::before { background: linear-gradient(rgba(14,22,20,.82),rgba(14,22,20,.9)),url('/images/miku-acg-background.jpg') center/cover fixed; }
+body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none; background: linear-gradient(rgba(245,250,248,.82),rgba(245,250,248,.88)),var(--wallpaper-image) center/cover fixed; }
+.dark body::before { background: linear-gradient(rgba(14,22,20,.82),rgba(14,22,20,.9)),var(--wallpaper-image) center/cover fixed; }
 .finesse-docs { min-height: 100vh; display: grid; grid-template-columns: 252px minmax(0,1fr); }
 .docs-sidebar { position: fixed; inset: 0 auto 0 0; z-index: 30; width: 252px; padding: 23px 15px 16px; display: flex; flex-direction: column; background: rgba(250,252,251,.92); border-right: 1px solid var(--f-line); backdrop-filter: blur(22px); }
 .dark .docs-sidebar { background: rgba(21,31,28,.94); }

@@ -42,7 +42,7 @@ export default defineConfig({
   lang: 'en-US',
   title: 'Finesse Docs',
   description: 'Documentation for the Finesse server management platform.',
-  base: '/Finesse/',
+  base: process.env.FINESSE_BASE_PATH || '/Finesse/',
   cleanUrls: true,
   lastUpdated: true,
   head: [
