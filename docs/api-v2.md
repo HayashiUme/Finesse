@@ -51,4 +51,4 @@ Returns an HPLP-compatible object with `games` and `regions`. Public rooms are i
 
 The Interface page installs an HTML file at the plugin listener's `/index` path; the file is stored at `Finesse/Pages/index.html`. The plugin root `/` does not serve this custom page.
 
-For browser clients hosted on another origin, add that exact origin to `allowedOrigins` in `finesse.json`. Keep the API listener private or behind an HTTPS reverse proxy; do not expose it directly to an untrusted network.
+For browser clients hosted on another origin, add that exact origin to `allowedOrigins` in `finesse.json`. The listener may bind to `http://0.0.0.0:8097/` (normalized internally to the `http://*:8097/` wildcard) or to a specific interface when it is protected by a firewall or an HTTPS reverse proxy. Exposing it directly over plain HTTP sends API keys and session tokens unencrypted.

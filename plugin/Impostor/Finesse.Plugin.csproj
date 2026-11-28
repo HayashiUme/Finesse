@@ -10,7 +10,9 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="$(ImpostorApiProject)" Condition="'$(ImpostorApiProject)' != ''" />
-    <ProjectReference Include="../../../Impostor/src/Impostor.Api/Impostor.Api.csproj" Condition="'$(ImpostorApiProject)' == ''" />
+    <ProjectReference Include="../../../Impostor/src/Impostor.Api/Impostor.Api.csproj" Condition="'$(ImpostorApiProject)' == '' and Exists('../../../Impostor/src/Impostor.Api/Impostor.Api.csproj')" />
+    <!-- Allow building outside the Impostor source tree (CI / release builds). -->
+    <PackageReference Include="Impostor.Api" Version="1.10.10" Condition="'$(ImpostorApiProject)' == '' and !Exists('../../../Impostor/src/Impostor.Api/Impostor.Api.csproj')" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="MoonSharp" Version="2.0.0" />
