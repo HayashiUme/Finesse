@@ -18,11 +18,10 @@ public sealed class FinesseOptions
         var url = Environment.GetEnvironmentVariable("FINESSE_URL") ?? file.Url ?? "http://127.0.0.1:8097/";
         var key = Environment.GetEnvironmentVariable("FINESSE_API_KEY") ?? file.ApiKey;
 
-        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttp ||
-            (uri.Host != "127.0.0.1" && !uri.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase)) ||
-            uri.AbsolutePath != "/" || !string.IsNullOrEmpty(uri.Query) || !string.IsNullOrEmpty(uri.Fragment) || !string.IsNullOrEmpty(uri.UserInfo))
+        var bindUrl = url.EndsWith('/') ? url : url + "/";
+        if (!TryValidateBindUrl(bindUrl, out var listenerUrl))
         {
-            throw new InvalidOperationException("Finesse must bind to an HTTP loopback address, such as http://127.0.0.1:8097/.");
+            throw new InvalidOperationException("Finesse must bind to a plain HTTP address such as http://127.0.0.1:8097/ or http://0.0.0.0:8097/. Use a firewall or an HTTPS reverse proxy when exposing it publicly.");
         }
 
         if (string.IsNullOrWhiteSpace(key)) throw new InvalidOperationException("FINESSE_API_KEY must not be empty.");
@@ -35,10 +34,40 @@ public sealed class FinesseOptions
         }
         return new FinesseOptions
         {
-            Url = url.EndsWith('/') ? url : url + "/",
+            Url = listenerUrl,
             ApiKey = key,
             AllowedOrigins = origins,
         };
+    }
+
+    private static bool TryValidateBindUrl(string url, out string listenerUrl)
+    {
+        listenerUrl = url;
+        var probe = url;
+        const string anyAddress = "http://0.0.0.0:";
+        const string wildcard = "http://*:";
+        const string strongWildcard = "http://+:";
+        if (url.StartsWith(wildcard, StringComparison.OrdinalIgnoreCase))
+        {
+            probe = anyAddress + url[wildcard.Length..];
+        }
+        else if (url.StartsWith(strongWildcard, StringComparison.OrdinalIgnoreCase))
+        {
+            probe = anyAddress + url[strongWildcard.Length..];
+        }
+        else if (url.StartsWith(anyAddress, StringComparison.OrdinalIgnoreCase))
+        {
+            // HttpListener rejects 0.0.0.0; the portable wildcard form is *.
+            listenerUrl = wildcard + url[anyAddress.Length..];
+        }
+
+        return Uri.TryCreate(probe, UriKind.Absolute, out var uri) &&
+               uri.Scheme == Uri.UriSchemeHttp &&
+               !string.IsNullOrWhiteSpace(uri.Host) &&
+               uri.AbsolutePath == "/" &&
+               string.IsNullOrEmpty(uri.Query) &&
+               string.IsNullOrEmpty(uri.Fragment) &&
+               string.IsNullOrEmpty(uri.UserInfo);
     }
 
     public bool AllowsOrigin(string? origin) =>
