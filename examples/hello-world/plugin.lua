@@ -1,14 +1,17 @@
 function get_overview()
-    return [[
+    local state = finesse.t("ready", "Ready")
+    local message = finesse.t("welcome", "Your Finesse extension is running.")
+    return string.format([[
     {
       "status": {
-        "State": "Ready",
+        "State": "%s",
         "Example": "Hello World"
       },
       "details": {
-        "message": "Your Finesse extension is running.",
-        "runtime": "Lua"
+        "message": "%s",
+        "runtime": "Lua",
+        "language": "%s"
       }
     }
-    ]]
+    ]], state, message, finesse.language())
 end

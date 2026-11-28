@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+import i18n, { errorMessage } from '../../localization/i18n.ts'
 import { ArrowLeft, Blocks, LoaderCircle, Play, RefreshCw } from 'lucide-react'
 import { fetchExtensionPage, fetchExtensions, runExtensionAction } from '../../lib/api.ts'
 import type { Connection, ExtensionAction, ExtensionPage, ExtensionSummary } from '../../types/types.ts'
-import { errorMessage } from '../../localization/i18n.ts'
 import './extensions.css'
 
 function readPath(value: unknown, path?: string | null): unknown {
@@ -22,15 +22,15 @@ export default function ExtensionsPanel({ connection, canManage }: { connection:
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [selection, setSelection] = useState<{ plugin: ExtensionSummary; page: ExtensionPage } | null>(null)
-  const extensions = useQuery({ queryKey: ['extensions', connection], queryFn: ({ signal }) => fetchExtensions(connection, signal), retry: false })
+  const extensions = useQuery({ queryKey: ['extensions', connection, i18n.resolvedLanguage], queryFn: ({ signal }) => fetchExtensions(connection, signal), retry: false })
   const page = useQuery({
-    queryKey: ['extension-page', connection, selection?.plugin.id, selection?.page.id],
+    queryKey: ['extension-page', connection, i18n.resolvedLanguage, selection?.plugin.id, selection?.page.id],
     queryFn: ({ signal }) => fetchExtensionPage(connection, selection!.plugin.id, selection!.page.id, signal),
     enabled: Boolean(selection), retry: false,
   })
   const action = useMutation({
     mutationFn: (item: ExtensionAction) => runExtensionAction(connection, selection!.plugin.id, item.id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['extension-page', connection, selection?.plugin.id, selection?.page.id] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['extension-page', connection] }),
   })
   const sections = selection?.page.sections ?? []
   const data = page.data?.data

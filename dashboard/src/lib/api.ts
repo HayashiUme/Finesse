@@ -1,4 +1,4 @@
-import { LocalizedError } from '../localization/i18n.ts'
+import i18n, { LocalizedError } from '../localization/i18n.ts'
 import type { AuditEntry, Connection, Snapshot, AuthUser, AuthChallenge, LoginResponse, ManagedUser, ReportFeed, BanFeed, BanRequest, CommandResult, ServerInfo, PluginInfo, ExtensionSummary, ExtensionPageData } from '../types/types.ts'
 
 export function normalizeConnection(value: Connection, enforceHttps = true): Connection {
@@ -22,7 +22,7 @@ export function hasSecureTransport(connection: Connection): boolean {
   catch { return false }
 }
 
-async function request(connection: Connection, path: string, body?: object, post: boolean | 'PUT' | 'DELETE' = false, signal?: AbortSignal): Promise<string> {
+async function request(connection: Connection, path: string, body?: object, post: boolean | 'PUT' | 'DELETE' = false, signal?: AbortSignal, extraHeaders: Record<string, string> = {}): Promise<string> {
   const normalized = normalizeConnection(connection)
   if ((connection.token || connection.apiKey || path.startsWith('/api/v1/auth/')) && !hasSecureTransport(normalized)) {
     throw new LocalizedError('errorSecureTransport')
@@ -35,7 +35,7 @@ async function request(connection: Connection, path: string, body?: object, post
   try {
     const response = await fetch(`${normalized.baseUrl}${path}`, {
       method: typeof post === 'string' ? post : post ? 'POST' : 'GET',
-      headers: { ...(connection.token ? { Authorization: `Bearer ${connection.token}` } : connection.apiKey ? { 'X-Api-Key': connection.apiKey } : {}), ...(body ? { 'Content-Type': 'application/json' } : {}) },
+      headers: { ...(connection.token ? { Authorization: `Bearer ${connection.token}` } : connection.apiKey ? { 'X-Api-Key': connection.apiKey } : {}), ...(body ? { 'Content-Type': 'application/json' } : {}), ...extraHeaders },
       body: body ? JSON.stringify(body) : undefined,
       credentials: 'omit',
       cache: 'no-store',
@@ -70,8 +70,8 @@ async function request(connection: Connection, path: string, body?: object, post
   } finally { window.clearTimeout(timer); signal?.removeEventListener('abort', cancel) }
 }
 
-async function getJson<T>(connection: Connection, path: string, signal?: AbortSignal): Promise<T> {
-  const response = await request(connection, path, undefined, false, signal)
+async function getJson<T>(connection: Connection, path: string, signal?: AbortSignal, extraHeaders: Record<string, string> = {}): Promise<T> {
+  const response = await request(connection, path, undefined, false, signal, extraHeaders)
   try { return JSON.parse(response) as T } catch { throw new LocalizedError('errorJson') }
 }
 
@@ -168,8 +168,9 @@ export const setPluginEnabled = async (connection: Connection, id: string, enabl
 export const deletePlugin = async (connection: Connection, id: string) =>
   JSON.parse(await request(connection, `/api/v1/plugins/${encodeURIComponent(id)}`, undefined, 'DELETE')) as PluginInfo
 
-export const fetchExtensions = (connection: Connection, signal?: AbortSignal) => getJson<ExtensionSummary[]>(connection, '/api/v1/extensions', signal)
+const extensionLanguageHeader = () => ({ 'Accept-Language': i18n.resolvedLanguage ?? i18n.language })
+export const fetchExtensions = (connection: Connection, signal?: AbortSignal) => getJson<ExtensionSummary[]>(connection, '/api/v1/extensions', signal, extensionLanguageHeader())
 export const fetchExtensionPage = (connection: Connection, pluginId: string, pageId: string, signal?: AbortSignal) =>
-  getJson<ExtensionPageData>(connection, `/api/v1/extensions/${encodeURIComponent(pluginId)}/pages/${encodeURIComponent(pageId)}`, signal)
+  getJson<ExtensionPageData>(connection, `/api/v1/extensions/${encodeURIComponent(pluginId)}/pages/${encodeURIComponent(pageId)}`, signal, extensionLanguageHeader())
 export const runExtensionAction = (connection: Connection, pluginId: string, actionId: string, payload: object = {}) =>
-  request(connection, `/api/v1/extensions/${encodeURIComponent(pluginId)}/actions/${encodeURIComponent(actionId)}`, payload, true)
+  request(connection, `/api/v1/extensions/${encodeURIComponent(pluginId)}/actions/${encodeURIComponent(actionId)}`, payload, true, undefined, extensionLanguageHeader())

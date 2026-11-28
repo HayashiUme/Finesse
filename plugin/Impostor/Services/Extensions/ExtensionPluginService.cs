@@ -18,35 +18,35 @@ public sealed class ExtensionPluginService
 
     public ExtensionPluginService() => Directory.CreateDirectory(_pluginsDirectory);
 
-    public IReadOnlyList<ExtensionSummary> List()
+    public IReadOnlyList<ExtensionSummary> List(string? language = null)
     {
         var result = new List<ExtensionSummary>();
         foreach (var directory in Directory.EnumerateDirectories(_pluginsDirectory))
         {
-            try { result.Add(Load(directory).Manifest); }
+            try { var plugin = Load(directory); result.Add(plugin.Definition.ToSummary(language)); }
             catch (Exception ex) when (ex is IOException or JsonException or InvalidDataException or UnauthorizedAccessException) { }
         }
         return result.OrderBy(plugin => plugin.Name, StringComparer.OrdinalIgnoreCase).ToArray();
     }
 
-    public ExtensionPageResult LoadPage(string pluginId, string pageId)
+    public ExtensionPageResult LoadPage(string pluginId, string pageId, string? language = null)
     {
         var plugin = Find(pluginId);
-        var page = plugin.Manifest.Pages.SingleOrDefault(candidate => candidate.Id == pageId)
+        var page = plugin.Definition.ToSummary(language).Pages.SingleOrDefault(candidate => candidate.Id == pageId)
             ?? throw new ManagementException(404, "extensionPageNotFound");
-        return new ExtensionPageResult(plugin.Manifest.Id, page.Id, Invoke(plugin, page.Handler, null, allowMutation: false));
+        return new ExtensionPageResult(plugin.Definition.Id, page.Id, Invoke(plugin, page.Handler, null, allowMutation: false, language));
     }
 
-    public JsonElement RunAction(string pluginId, string actionId, JsonElement payload)
+    public JsonElement RunAction(string pluginId, string actionId, JsonElement payload, string? language = null)
     {
         var plugin = Find(pluginId);
-        var action = plugin.Manifest.Actions.SingleOrDefault(candidate => candidate.Id == actionId)
+        var action = plugin.Definition.ToSummary(language).Actions.SingleOrDefault(candidate => candidate.Id == actionId)
             ?? throw new ManagementException(404, "extensionActionNotFound");
-        return Invoke(plugin, action.Handler, payload, action.Mutating);
+        return Invoke(plugin, action.Handler, payload, action.Mutating, language);
     }
 
-    public ExtensionAction GetAction(string pluginId, string actionId) =>
-        Find(pluginId).Manifest.Actions.SingleOrDefault(candidate => candidate.Id == actionId)
+    public ExtensionAction GetAction(string pluginId, string actionId, string? language = null) =>
+        Find(pluginId).Definition.ToSummary(language).Actions.SingleOrDefault(candidate => candidate.Id == actionId)
         ?? throw new ManagementException(404, "extensionActionNotFound");
 
     private LoadedExtension Find(string id)
@@ -75,7 +75,7 @@ public sealed class ExtensionPluginService
         var manifest = JsonSerializer.Deserialize<ExtensionManifest>(File.ReadAllBytes(manifestPath), JsonDefaults.Options)
             ?? throw new InvalidDataException("Extension manifest is empty.");
         Validate(manifest);
-        return new LoadedExtension(directory, manifest.ToSummary(), File.ReadAllText(scriptPath, Encoding.UTF8), manifest.AllowedHosts);
+        return new LoadedExtension(directory, manifest, manifest.ToSummary(null), File.ReadAllText(scriptPath, Encoding.UTF8), manifest.AllowedHosts);
     }
 
     private static void Validate(ExtensionManifest manifest)
@@ -86,6 +86,16 @@ public sealed class ExtensionPluginService
         if (manifest.Pages.Select(page => page.Id).Distinct(StringComparer.Ordinal).Count() != manifest.Pages.Count ||
             manifest.Actions.Select(action => action.Id).Distinct(StringComparer.Ordinal).Count() != manifest.Actions.Count)
             throw new InvalidDataException("Extension IDs must be unique.");
+        if (manifest.Translations is { Count: > 16 }) throw new InvalidDataException("Extensions may define at most 16 locales.");
+        foreach (var (locale, translation) in manifest.Translations ?? [])
+        {
+            try { _ = System.Globalization.CultureInfo.GetCultureInfo(locale); }
+            catch (System.Globalization.CultureNotFoundException) { throw new InvalidDataException("Extension translation locales must be valid culture tags."); }
+            if (translation.Name?.Length > 80 || translation.Description?.Length > 1_000 ||
+                (translation.Pages?.Count ?? 0) > 16 || (translation.Actions?.Count ?? 0) > 32 ||
+                (translation.Messages?.Count ?? 0) > 256 || translation.Messages?.Any(message => message.Key.Length is < 1 or > 128 || message.Value.Length > 2_000) == true)
+                throw new InvalidDataException("Extension translation fields are invalid.");
+        }
         foreach (var page in manifest.Pages)
         {
             if (!IsIdentifier(page.Id) || !IsIdentifier(page.Handler) || string.IsNullOrWhiteSpace(page.Title) || page.Title.Length > 100 || page.Sections.Count > 16)
@@ -102,10 +112,13 @@ public sealed class ExtensionPluginService
                 throw new InvalidDataException("allowedHosts must contain exact host names without ports.");
     }
 
-    private JsonElement Invoke(LoadedExtension plugin, string handler, JsonElement? payload, bool allowMutation)
+    private JsonElement Invoke(LoadedExtension plugin, string handler, JsonElement? payload, bool allowMutation, string? language)
     {
         var script = new Script(CoreModules.Preset_SoftSandbox);
         var finesse = new Table(script);
+        var locale = NormalizeLanguage(language);
+        finesse["language"] = DynValue.NewCallback((_, _) => DynValue.NewString(locale));
+        finesse["t"] = DynValue.NewCallback((_, args) => DynValue.NewString(Translate(plugin.Definition, locale, Argument(args, 0).String, Argument(args, 1).String)));
         finesse["setting"] = DynValue.NewCallback((_, args) => DynValue.NewString(ReadSetting(plugin.Directory, Argument(args, 0).String)));
         finesse["request"] = DynValue.NewCallback((_, args) => DynValue.NewString(Request(plugin.AllowedHosts, args, allowMutation)));
         finesse["basic"] = DynValue.NewCallback((_, args) =>
@@ -195,7 +208,30 @@ public sealed class ExtensionPluginService
 
     private static bool IsIdentifier(string? value) => value is { Length: > 0 and <= 64 } && value.All(character => char.IsAsciiLetterOrDigit(character) || character is '.' or '-' or '_');
     private static DynValue Argument(CallbackArguments args, int index) => args.Count > index ? args[index] : DynValue.Nil;
-    private sealed record LoadedExtension(string Directory, ExtensionSummary Manifest, string Script, IReadOnlyList<string> AllowedHosts);
+    private sealed record LoadedExtension(string Directory, ExtensionManifest Definition, ExtensionSummary Manifest, string Script, IReadOnlyList<string> AllowedHosts);
+    private static string NormalizeLanguage(string? language)
+    {
+        if (string.IsNullOrWhiteSpace(language)) return "en";
+        var candidate = language.Split(',', ';')[0].Trim().Replace('_', '-');
+        try { return System.Globalization.CultureInfo.GetCultureInfo(candidate).Name; }
+        catch (System.Globalization.CultureNotFoundException) { return "en"; }
+    }
+    private static ExtensionTranslation? SelectTranslation(ExtensionManifest manifest, string? language)
+    {
+        if (manifest.Translations is null || manifest.Translations.Count == 0) return null;
+        var locale = NormalizeLanguage(language);
+        var exact = manifest.Translations.FirstOrDefault(pair => pair.Key.Equals(locale, StringComparison.OrdinalIgnoreCase)).Value;
+        if (exact is not null) return exact;
+        var neutral = locale.Split('-')[0];
+        return manifest.Translations.FirstOrDefault(pair => pair.Key.Equals(neutral, StringComparison.OrdinalIgnoreCase)).Value
+            ?? manifest.Translations.FirstOrDefault(pair => pair.Key.Equals("en", StringComparison.OrdinalIgnoreCase)).Value;
+    }
+    private static string Translate(ExtensionManifest manifest, string language, string? key, string? fallback)
+    {
+        if (string.IsNullOrWhiteSpace(key) || key.Length > 128) return fallback ?? string.Empty;
+        var value = SelectTranslation(manifest, language)?.Messages?.GetValueOrDefault(key);
+        return value ?? fallback ?? key;
+    }
     private sealed class ExtensionManifest
     {
         public string Id { get; set; } = string.Empty;
@@ -205,6 +241,48 @@ public sealed class ExtensionPluginService
         public List<string> AllowedHosts { get; set; } = [];
         public List<ExtensionPage> Pages { get; set; } = [];
         public List<ExtensionAction> Actions { get; set; } = [];
-        public ExtensionSummary ToSummary() => new(Id, Name, Version, Description, Pages, Actions);
+        public Dictionary<string, ExtensionTranslation>? Translations { get; set; }
+        public ExtensionSummary ToSummary(string? language = null)
+        {
+            var translation = SelectTranslation(this, language);
+            if (translation is null) return new(Id, Name, Version, Description, Pages, Actions);
+            var pages = Pages.Select(page =>
+            {
+                ExtensionPageTranslation? pageTranslation = null;
+                translation.Pages?.TryGetValue(page.Id, out pageTranslation);
+                var sections = page.Sections.Select((section, index) =>
+                {
+                    var title = pageTranslation?.Sections?.GetValueOrDefault(index.ToString()) ?? section.Title;
+                    return section with { Title = title };
+                }).ToArray();
+                return page with { Title = pageTranslation?.Title ?? page.Title, Description = pageTranslation?.Description ?? page.Description, Sections = sections };
+            }).ToArray();
+            var actions = Actions.Select(action =>
+            {
+                ExtensionActionTranslation? actionTranslation = null;
+                translation.Actions?.TryGetValue(action.Id, out actionTranslation);
+                return action with { Label = actionTranslation?.Label ?? action.Label, Confirm = actionTranslation?.Confirm ?? action.Confirm };
+            }).ToArray();
+            return new(Id, translation.Name ?? Name, Version, translation.Description ?? Description, pages, actions);
+        }
+    }
+    private sealed class ExtensionTranslation
+    {
+        public string? Name { get; set; }
+        public string? Description { get; set; }
+        public Dictionary<string, ExtensionPageTranslation>? Pages { get; set; }
+        public Dictionary<string, ExtensionActionTranslation>? Actions { get; set; }
+        public Dictionary<string, string>? Messages { get; set; }
+    }
+    private sealed class ExtensionPageTranslation
+    {
+        public string? Title { get; set; }
+        public string? Description { get; set; }
+        public Dictionary<string, string>? Sections { get; set; }
+    }
+    private sealed class ExtensionActionTranslation
+    {
+        public string? Label { get; set; }
+        public string? Confirm { get; set; }
     }
 }

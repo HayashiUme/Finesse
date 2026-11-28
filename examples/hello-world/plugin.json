@@ -11,10 +11,56 @@
       "description": "A small example page powered by a Lua handler.",
       "handler": "get_overview",
       "sections": [
-        { "type": "stats", "title": "Extension status", "dataPath": "status" },
-        { "type": "json", "title": "Details", "dataPath": "details" }
+        {
+          "type": "stats",
+          "title": "Extension status",
+          "dataPath": "status"
+        },
+        {
+          "type": "json",
+          "title": "Details",
+          "dataPath": "details"
+        }
       ]
     }
   ],
-  "actions": []
+  "actions": [],
+  "translations": {
+    "en": {
+      "name": "Hello World",
+      "description": "A minimal extension example with a local status page.",
+      "pages": {
+        "overview": {
+          "title": "Overview",
+          "description": "A small example page powered by a Lua handler.",
+          "sections": {
+            "0": "Extension status",
+            "1": "Details"
+          }
+        }
+      },
+      "messages": {
+        "ready": "Ready",
+        "welcome": "Your Finesse extension is running."
+      }
+    },
+    "zh-CN": {
+      "name": "你好，世界",
+      "description": "一个带有本地状态页面的最小扩展示例。",
+      "pages": {
+        "overview": {
+          "title": "概览",
+          "description": "由 Lua 处理器提供数据的示例页面。",
+          "sections": {
+            "0": "扩展状态",
+            "1": "详细信息"
+          }
+        }
+      },
+      "messages": {
+        "ready": "就绪",
+        "welcome": "Finesse 扩展正在运行。"
+      }
+    }
+  }
 }

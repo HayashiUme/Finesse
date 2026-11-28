@@ -302,20 +302,20 @@ public sealed class FinesseHttpService : BackgroundService
         }
         else if (request.HttpMethod == "GET" && path == "/api/v1/extensions")
         {
-            await WriteJsonAsync(context.Response, _extensions.List());
+            await WriteJsonAsync(context.Response, _extensions.List(request.Headers["Accept-Language"]));
         }
         else if (request.HttpMethod == "GET" && TryParseExtensionPage(path, out var extensionId, out var extensionPageId))
         {
-            await WriteJsonAsync(context.Response, _extensions.LoadPage(extensionId, extensionPageId));
+            await WriteJsonAsync(context.Response, _extensions.LoadPage(extensionId, extensionPageId, request.Headers["Accept-Language"]));
         }
         else if (request.HttpMethod == "POST" && TryParseExtensionAction(path, out extensionId, out var extensionActionId))
         {
-            var action = _extensions.GetAction(extensionId, extensionActionId);
+            var action = _extensions.GetAction(extensionId, extensionActionId, request.Headers["Accept-Language"]);
             if (action.Mutating) RequireSuperAdmin(user);
             var payload = await ReadJsonElementAsync(request, 64_000, cancellationToken);
             try
             {
-                var result = _extensions.RunAction(extensionId, extensionActionId, payload);
+                var result = _extensions.RunAction(extensionId, extensionActionId, payload, request.Headers["Accept-Language"]);
                 _management.RecordExternalAction("extensionAction", $"{extensionId}/{extensionActionId}", true, "Completed");
                 await WriteJsonAsync(context.Response, result);
             }
