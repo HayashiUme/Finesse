@@ -20,3 +20,9 @@
 
 连接错误与操作通知保存翻译键及变量，在显示时翻译，使已有提示可随语言切换。富文本帮助通过 `<Trans>` 映射明确的 React 组件，不使用 `dangerouslySetInnerHTML`。
 
+
+## 新增 Markdown 文档
+
+在 `docs/zh-CN/` 下新建简体中文 `.md` 文件，英文放在 `docs/en/`。用 `# 页面标题` 开头；也可以在文件顶部的 frontmatter 中用 `title` 指定侧边栏标题。文档站构建后，新页面会自动出现在「更多文档」分组下。
+
+同一篇文档的中英文版本应使用相同的相对路径，例如 `zh-CN/tutorials/setup.md` 和 `en/tutorials/setup.md`。切换语言时会打开对应译文；如果没有译文，则打开另一种语言的首页。

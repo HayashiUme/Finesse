@@ -1,30 +1,41 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { useData, useRouter, withBase } from 'vitepress'
+import { useData, withBase } from 'vitepress'
+import { data as documents } from './documents.data'
 
 const { frontmatter, page, site, isDark } = useData()
-const router = useRouter()
 const mobileOpen = ref(false)
 const query = ref('')
 const locale = computed(() => page.value.relativePath.startsWith('zh-CN/') ? 'zh-CN' : 'en')
 const chinese = computed(() => locale.value === 'zh-CN')
 const localeRoot = computed(() => chinese.value ? '/zh-CN/' : '/en/')
+type NavItem = { text: string; link: string }
+type NavGroup = { text: string; items: NavItem[] }
 const sidebar = computed(() => {
-  const groups = site.value.themeConfig.sidebar ?? {}
-  return groups[localeRoot.value] ?? Object.values(groups)[chinese.value ? 1 : 0] ?? []
+  const groups: NavGroup[] = site.value.themeConfig.sidebar?.[localeRoot.value] ?? []
+  const listed = new Set(groups.flatMap(group => group.items.map(item => item.link)))
+  const additional = documents.filter(({ link }) =>
+    link.startsWith(localeRoot.value) && link !== localeRoot.value && !listed.has(link),
+  )
+  return additional.length
+    ? [...groups, { text: chinese.value ? '更多文档' : 'More docs', items: additional }]
+    : groups
 })
-const entries = computed(() => sidebar.value.flatMap((group: any) => group.items ?? []))
+const currentLink = computed(() => '/' + page.value.relativePath
+  .replace(/(^|\/)index\.md$/, '$1').replace(/\.md$/, ''))
 const activeTitle = computed(() => frontmatter.value.title || page.value.title || (chinese.value ? '文档' : 'Documentation'))
 const visibleGroups = computed(() => {
   const needle = query.value.trim().toLocaleLowerCase()
   if (!needle) return sidebar.value
-  return sidebar.value.map((group: any) => ({ ...group, items: group.items.filter((item: any) => item.text.toLocaleLowerCase().includes(needle)) })).filter((group: any) => group.items.length)
+  return sidebar.value.map(group => ({ ...group, items: group.items.filter(item => item.text.toLocaleLowerCase().includes(needle)) })).filter(group => group.items.length)
 })
-const switchLanguage = () => {
+const languageLink = computed(() => {
   const targetPrefix = chinese.value ? '/en/' : '/zh-CN/'
-  const relative = page.value.relativePath.replace(/^(en|zh-CN)\//, '').replace(/\.md$/, '')
-  void router.go(`${targetPrefix}${relative === 'index' ? '' : relative}`)
-}
+  const counterpart = targetPrefix + (currentLink.value.startsWith(localeRoot.value)
+    ? currentLink.value.slice(localeRoot.value.length)
+    : '')
+  return withBase(documents.some(({ link }) => link === counterpart) ? counterpart : targetPrefix)
+})
 const toggleTheme = () => { isDark.value = !isDark.value }
 </script>
 
@@ -32,7 +43,7 @@ const toggleTheme = () => { isDark.value = !isDark.value }
   <div class="finesse-docs" :class="{ 'mobile-open': mobileOpen, 'is-home': frontmatter.layout === 'home' }">
     <button v-if="mobileOpen" class="mobile-scrim" aria-label="Close navigation" @click="mobileOpen = false" />
     <aside class="docs-sidebar">
-      <a class="brand" href="/Finesse/" aria-label="Finesse documentation home">
+      <a class="brand" :href="withBase(localeRoot)" :aria-label="chinese ? 'Finesse 文档首页' : 'Finesse documentation home'">
         <img :src="withBase('/images/miku-acg-icon.png')" alt="" />
         <span><strong>Finesse</strong><small>{{ chinese ? '文档中心' : 'Documentation' }}</small></span>
       </a>
@@ -41,7 +52,7 @@ const toggleTheme = () => { isDark.value = !isDark.value }
       <nav class="docs-nav" :aria-label="chinese ? '文档导航' : 'Documentation navigation'">
         <section v-for="group in visibleGroups" :key="group.text" class="nav-group">
           <h2>{{ group.text }}</h2>
-          <a v-for="item in group.items" :key="item.link" :href="withBase(item.link)" :class="{ active: page.relativePath.replace(/\.md$/, '') === item.link.replace(/^\//, '') }" @click="mobileOpen = false">{{ item.text }}</a>
+          <a v-for="item in group.items" :key="item.link" :href="withBase(item.link)" :class="{ active: currentLink === item.link }" :aria-current="currentLink === item.link ? 'page' : undefined" @click="mobileOpen = false">{{ item.text }}</a>
         </section>
       </nav>
       <a class="sidebar-github" href="https://github.com/HayashiUme/Finesse" target="_blank" rel="noreferrer">
@@ -54,7 +65,7 @@ const toggleTheme = () => { isDark.value = !isDark.value }
         <button class="mobile-menu" :aria-label="chinese ? '打开导航' : 'Open navigation'" @click="mobileOpen = true">☰</button>
         <div class="breadcrumbs"><a :href="withBase(localeRoot)">Finesse</a><span>/</span><strong>{{ activeTitle }}</strong></div>
         <div class="top-actions">
-          <button class="top-button language-button" @click="switchLanguage">{{ chinese ? 'EN' : '中文' }}</button>
+          <a class="top-button language-button" :href="languageLink" :lang="chinese ? 'en' : 'zh-CN'">{{ chinese ? 'EN' : '中文' }}</a>
           <button class="top-button theme-button" :aria-label="chinese ? '切换主题' : 'Toggle theme'" @click="toggleTheme">{{ isDark ? '☼' : '☾' }}</button>
           <a class="top-button github-button" href="https://github.com/HayashiUme/Finesse" target="_blank" rel="noreferrer">GitHub <span>↗</span></a>
         </div>
@@ -67,7 +78,7 @@ const toggleTheme = () => { isDark.value = !isDark.value }
             <h1>{{ frontmatter.hero?.name || 'Finesse' }}</h1>
             <h2>{{ frontmatter.hero?.text }}</h2>
             <p>{{ frontmatter.hero?.tagline }}</p>
-            <div class="hero-actions"><a class="primary-action" href="/Finesse/en/installation">{{ chinese ? '开始使用' : 'Get started' }} <span>→</span></a><a class="secondary-action" :href="withBase(localeRoot + 'guide')">{{ chinese ? '浏览使用指南' : 'Browse the guide' }}</a></div>
+            <div class="hero-actions"><a class="primary-action" :href="withBase(localeRoot + 'installation')">{{ chinese ? '开始使用' : 'Get started' }} <span>→</span></a><a class="secondary-action" :href="withBase(localeRoot + 'guide')">{{ chinese ? '浏览使用指南' : 'Browse the guide' }}</a></div>
           </div>
           <div class="hero-art"><div class="art-orbit orbit-one"></div><div class="art-orbit orbit-two"></div><img :src="withBase('/images/miku-acg-icon.png')" alt="Finesse" /><span class="art-spark spark-one">✦</span><span class="art-spark spark-two">✧</span><span class="art-dot"></span></div>
         </section>
@@ -76,11 +87,11 @@ const toggleTheme = () => { isDark.value = !isDark.value }
             <span class="feature-icon">{{ ['⌘', '◈', '✳'][index] }}</span><h3>{{ feature.title }}</h3><p>{{ feature.details }}</p><span class="feature-arrow">↗</span>
           </a>
         </section>
-        <section class="home-content"><Content /></section>
+        <section class="home-content"><Content class="vp-doc" /></section>
       </div>
 
       <div v-else class="article-layout">
-        <article class="article-card"><div class="article-kicker">{{ chinese ? 'FINESSE 文档' : 'FINESSE DOCUMENTATION' }}</div><Content /></article>
+        <article class="article-card"><div class="article-kicker">{{ chinese ? 'FINESSE 文档' : 'FINESSE DOCUMENTATION' }}</div><Content class="vp-doc" /></article>
         <aside class="article-rail"><div class="rail-card"><span class="rail-icon">✦</span><h3>{{ chinese ? '快速开始' : 'Quick start' }}</h3><p>{{ chinese ? '准备好管理你的 Impostor 服务器了吗？' : 'Ready to manage your Impostor server?' }}</p><a :href="withBase(localeRoot + 'installation')">{{ chinese ? '查看安装指南' : 'Read installation guide' }} <span>→</span></a></div><div class="rail-note">{{ chinese ? 'Finesse · 服务器管理' : 'Finesse · Server management' }}</div></aside>
       </div>
       <footer class="docs-footer"><span>Finesse</span><span>{{ chinese ? '开源服务器管理平台' : 'Open source server management' }}</span><a href="https://github.com/HayashiUme/Finesse">GPL-3.0 · GitHub ↗</a></footer>

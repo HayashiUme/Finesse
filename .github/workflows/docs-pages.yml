@@ -2,7 +2,7 @@ name: Deploy documentation
 
 on:
   push:
-    branches: [docs]
+    branches: [github-pages]
     paths:
       - 'docs/**'
       - '.github/workflows/docs-pages.yml'
@@ -21,7 +21,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout docs branch
+      - name: Checkout documentation
         uses: actions/checkout@v4
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
@@ -43,6 +43,7 @@ jobs:
           path: docs/.vitepress/dist
 
   deploy:
+    if: github.ref == 'refs/heads/github-pages'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -52,5 +53,3 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-
-
