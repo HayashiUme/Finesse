@@ -38,16 +38,18 @@ const zhSidebar = [
   ] },
 ]
 
+const base = process.env.FINESSE_BASE_PATH || '/'
+
 export default defineConfig({
   lang: 'en-US',
   title: 'Finesse Docs',
   description: 'Documentation for the Finesse server management platform.',
-  base: process.env.FINESSE_BASE_PATH || '/Finesse/',
+  base,
   cleanUrls: true,
   lastUpdated: true,
   head: [
     ['meta', { name: 'theme-color', content: '#39c5bb' }],
-    ['link', { rel: 'icon', type: 'image/png', href: '/Finesse/images/miku-acg-icon.png' }],
+    ['link', { rel: 'icon', type: 'image/png', href: `${base}images/miku-acg-icon.png` }],
   ],
   locales: {
     root: { label: 'English', lang: 'en-US', link: '/en/' },
