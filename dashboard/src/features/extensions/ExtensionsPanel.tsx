@@ -1,10 +1,10 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import i18n, { errorMessage } from '../../localization/i18n.ts'
 import { ArrowLeft, Blocks, LoaderCircle, Play, RefreshCw } from 'lucide-react'
 import { fetchExtensionPage, fetchExtensions, runExtensionAction } from '../../lib/api.ts'
-import type { Connection, ExtensionAction, ExtensionPage, ExtensionSummary } from '../../types/types.ts'
+import type { Connection, ExtensionAction, ExtensionPage, ExtensionSection, ExtensionSummary } from '../../types/types.ts'
 import './extensions.css'
 
 function readPath(value: unknown, path?: string | null): unknown {
@@ -29,7 +29,7 @@ export default function ExtensionsPanel({ connection, canManage }: { connection:
     enabled: Boolean(selection), retry: false,
   })
   const action = useMutation({
-    mutationFn: (item: ExtensionAction) => runExtensionAction(connection, selection!.plugin.id, item.id),
+    mutationFn: ({ item, payload }: { item: ExtensionAction; payload?: Record<string, string | boolean> }) => runExtensionAction(connection, selection!.plugin.id, item.id, payload ?? {}),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['extension-page', connection] }),
   })
   const sections = selection?.page.sections ?? []
@@ -45,6 +45,10 @@ export default function ExtensionsPanel({ connection, canManage }: { connection:
       {page.isPending ? <div className="extension-empty"><LoaderCircle className="spin" />{t('checkingServer')}</div> : <div className="extension-sections">
         {sections.map((section, index) => {
           const value = readPath(data, section.dataPath)
+          if (section.type === 'form') {
+            const formAction = selectedPlugin.actions.find(item => item.id === section.actionId)
+            return <ExtensionForm key={`${section.title}-${index}`} section={section} value={value} action={formAction} canManage={canManage} pending={action.isPending} onSubmit={(item, payload) => action.mutate({ item, payload })} />
+          }
           if (section.type === 'json') return <section className="extension-section" key={`${section.title}-${index}`}><h3>{section.title}</h3><pre>{JSON.stringify(value, null, 2) ?? 'null'}</pre></section>
           if (section.type === 'table') {
             const rows = Array.isArray(value) ? value : []
@@ -55,7 +59,7 @@ export default function ExtensionsPanel({ connection, canManage }: { connection:
           return <section className="extension-section" key={`${section.title}-${index}`}><h3>{section.title}</h3><div className="extension-stats">{stats.map(([label, statistic]) => <div className="extension-stat" key={label}><span>{label}</span><b>{displayValue(statistic)}</b></div>)}</div></section>
         })}
       </div>}
-      {activePage && selectedPlugin.actions.length > 0 && <section className="extension-actions"><h3>{t('extensionsActions')}</h3>{selectedPlugin.actions.map(item => <button className={item.mutating ? 'danger-btn' : 'secondary-btn'} key={item.id} disabled={action.isPending || (item.mutating && !canManage)} title={item.mutating && !canManage ? t('superAdminRequired') : undefined} onClick={() => { if (item.mutating && !canManage) return; if (item.confirm && !window.confirm(item.confirm)) return; action.mutate(item) }}>{action.isPending ? <LoaderCircle size={15} className="spin" /> : <Play size={15} />}{item.label}</button>)}</section>}
+      {activePage && selectedPlugin.actions.some(item => !sections.some(section => section.actionId === item.id)) && <section className="extension-actions"><h3>{t('extensionsActions')}</h3>{selectedPlugin.actions.filter(item => !sections.some(section => section.actionId === item.id)).map(item => <button className={item.mutating ? 'danger-btn' : 'secondary-btn'} key={item.id} disabled={action.isPending || (item.mutating && !canManage)} title={item.mutating && !canManage ? t('superAdminRequired') : undefined} onClick={() => { if (item.mutating && !canManage) return; if (item.confirm && !window.confirm(item.confirm)) return; action.mutate({ item }) }}>{action.isPending ? <LoaderCircle size={15} className="spin" /> : <Play size={15} />}{item.label}</button>)}</section>}
     </section>
   }
 
@@ -64,4 +68,38 @@ export default function ExtensionsPanel({ connection, canManage }: { connection:
     {error && <div className="setup-error" role="alert">{errorMessage(error)}</div>}
     {extensions.isPending ? <div className="extension-empty"><LoaderCircle className="spin" />{t('checkingServer')}</div> : extensions.data?.length ? <div className="extension-grid">{extensions.data.map(plugin => <article className="extension-card" key={plugin.id}><div className="extension-card-icon"><Blocks size={18} /></div><div className="extension-card-copy"><h3>{plugin.name}</h3><span>{plugin.id} · v{plugin.version}</span><p>{plugin.description}</p></div><div className="extension-page-links">{plugin.pages.map(item => <button className="secondary-btn" key={item.id} onClick={() => setSelection({ plugin, page: item })}>{item.title}</button>)}</div></article>)}</div> : <div className="extension-empty"><Blocks size={22} /><span>{t('extensionsEmpty')}</span></div>}
   </section>
+}
+
+
+type FormValue = string | boolean
+function ExtensionForm({ section, value, action, canManage, pending, onSubmit }: {
+  section: ExtensionSection
+  value: unknown
+  action?: ExtensionAction
+  canManage: boolean
+  pending: boolean
+  onSubmit: (action: ExtensionAction, values: Record<string, FormValue>) => void
+}) {
+  const { t } = useTranslation()
+  const [values, setValues] = useState<Record<string, FormValue>>(() => initialFormValues(section, value))
+  useEffect(() => setValues(initialFormValues(section, value)), [section, value])
+  const disabled = pending || !action || (action.mutating && !canManage)
+  return <section className="extension-section extension-form-section">
+    <h3>{section.title}</h3>
+    <form className="extension-form" onSubmit={event => { event.preventDefault(); if (!disabled && action) onSubmit(action, values) }}>
+      {(section.fields ?? []).map(field => field.type === 'checkbox'
+        ? <label className="extension-form-checkbox" key={field.key}><input type="checkbox" checked={Boolean(values[field.key])} onChange={event => setValues(current => ({ ...current, [field.key]: event.target.checked }))} /><span>{field.label}</span></label>
+        : <label className="field-label" key={field.key}>{field.label}<input type={field.type} value={String(values[field.key] ?? '')} required={field.required} maxLength={field.maxLength ?? undefined} placeholder={field.placeholder ?? undefined} onChange={event => setValues(current => ({ ...current, [field.key]: event.target.value }))} /></label>)}
+      {action?.mutating && !canManage && <p>{t('superAdminRequired')}</p>}
+      <button className="primary-btn" disabled={disabled}>{pending ? <LoaderCircle size={15} className="spin" /> : <Play size={15} />}{action?.label ?? t('save')}</button>
+    </form>
+  </section>
+}
+
+function initialFormValues(section: ExtensionSection, value: unknown): Record<string, FormValue> {
+  const source = value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {}
+  return Object.fromEntries((section.fields ?? []).map(field => {
+    const current = source[field.key]
+    return [field.key, field.type === 'checkbox' ? Boolean(current) : typeof current === 'string' ? current : '']
+  }))
 }

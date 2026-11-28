@@ -6,8 +6,7 @@ namespace Finesse.Plugin;
 
 public sealed record InterfaceApiKeyDto(string Id, string Name, string Prefix, string[] Scopes, DateTimeOffset CreatedAt);
 public sealed record InterfaceApiKeyCreatedDto(InterfaceApiKeyDto Key, string Secret);
-public sealed record XApiSettingsDto(bool Enabled, bool IncludePrivateGames, string RegionId, string RegionName, string RegionUrl, bool HelloPageEnabled);
-public sealed record InterfaceSettingsDto(IReadOnlyList<InterfaceApiKeyDto> ApiKeys, XApiSettingsDto XApi, bool HelloPageEnabled);
+public sealed record InterfaceSettingsDto(IReadOnlyList<InterfaceApiKeyDto> ApiKeys, bool HelloPageEnabled);
 
 public sealed class InterfaceService
 {
@@ -34,7 +33,7 @@ public sealed class InterfaceService
 
     public InterfaceSettingsDto GetSettings()
     {
-        lock (_gate) return ToDto(_store) with { HelloPageEnabled = File.Exists(_helloPath), XApi = _store.XApi with { HelloPageEnabled = File.Exists(_helloPath) } };
+        lock (_gate) return ToDto(_store) with { HelloPageEnabled = File.Exists(_helloPath) };
     }
 
     public InterfaceApiKeyCreatedDto CreateApiKey(string? name, IEnumerable<string>? requestedScopes)
@@ -73,28 +72,6 @@ public sealed class InterfaceService
             return _store.ApiKeys.Any(key => key.Scopes.Contains(scope, StringComparer.Ordinal) && FixedTimeEquals(key.SecretHash, hash));
     }
 
-    public XApiSettingsDto UpdateXApi(XApiSettingsDto settings)
-    {
-        if (settings is null) throw new ManagementException(400, "xApiSettingsInvalid");
-        var regionId = settings.RegionId?.Trim() ?? string.Empty;
-        var regionName = settings.RegionName?.Trim() ?? string.Empty;
-        var regionUrl = settings.RegionUrl?.Trim() ?? string.Empty;
-        if (regionId.Length is < 1 or > 32 || regionName.Length is < 1 or > 80 || regionUrl.Length > 512 ||
-            regionId.Any(char.IsControl) || regionName.Any(char.IsControl) ||
-            (!string.IsNullOrEmpty(regionUrl) && (!Uri.TryCreate(regionUrl, UriKind.Absolute, out var uri) || uri.Scheme is not ("http" or "https"))))
-            throw new ManagementException(400, "xApiSettingsInvalid");
-        lock (_gate)
-        {
-            Save(_store with { XApi = settings with { RegionId = regionId, RegionName = regionName, RegionUrl = regionUrl.TrimEnd('/'), HelloPageEnabled = _store.XApi.HelloPageEnabled } });
-            return _store.XApi;
-        }
-    }
-
-    public XApiSettingsDto GetXApiSettings()
-    {
-        lock (_gate) return _store.XApi;
-    }
-
     public bool HasHelloPage => File.Exists(_helloPath);
 
     public string? ReadHelloPage() => File.Exists(_helloPath) ? File.ReadAllText(_helloPath, Encoding.UTF8) : null;
@@ -104,7 +81,6 @@ public sealed class InterfaceService
         if (html is null)
         {
             if (File.Exists(_helloPath)) File.Delete(_helloPath);
-            lock (_gate) Save(_store with { XApi = _store.XApi with { HelloPageEnabled = false } });
             return;
         }
         if (Encoding.UTF8.GetByteCount(html) > 512_000 || string.IsNullOrWhiteSpace(html) || !html.Contains("<html", StringComparison.OrdinalIgnoreCase))
@@ -117,39 +93,13 @@ public sealed class InterfaceService
             {
                 File.WriteAllText(temp, html, new UTF8Encoding(false));
                 File.Move(temp, _helloPath, true);
-                Save(_store with { XApi = _store.XApi with { HelloPageEnabled = true } });
             }
             finally { if (File.Exists(temp)) File.Delete(temp); }
         }
     }
 
-    public object BuildXApiGames(SnapshotDto snapshot)
-    {
-        XApiSettingsDto settings;
-        lock (_gate) settings = _store.XApi;
-        var games = snapshot.Games
-            .Where(game => settings.IncludePrivateGames || game.IsPublic)
-            .Select(game => new
-            {
-                code = game.Code,
-                host_name = game.HostName ?? "—",
-                status = game.State is "Started" ? "Started" : "Lobby",
-                player_count = game.PlayerCount,
-                max_players = game.MaxPlayers,
-                chat_lang = game.ChatLanguageId,
-                map_id = game.MapId,
-                region_id = settings.RegionId,
-                mods = Array.Empty<object>(),
-            }).ToArray();
-        return new
-        {
-            games,
-            regions = new[] { new { id = settings.RegionId, name = settings.RegionName, url = settings.RegionUrl } },
-        };
-    }
-
     private static InterfaceSettingsDto ToDto(InterfaceStore store) => new(
-        store.ApiKeys.Select(ToDto).ToArray(), store.XApi, store.XApi.HelloPageEnabled);
+        store.ApiKeys.Select(ToDto).ToArray(), false);
 
     private static InterfaceApiKeyDto ToDto(StoredApiKey key) => new(key.Id, key.Name, key.Prefix,
         [.. key.Scopes.Where(scope => AvailableScopes.Contains(scope, StringComparer.Ordinal))], key.CreatedAt);
@@ -177,6 +127,5 @@ public sealed class InterfaceService
     private sealed record InterfaceStore
     {
         public List<StoredApiKey> ApiKeys { get; init; } = [];
-        public XApiSettingsDto XApi { get; init; } = new(true, false, "us", "United States", "", false);
     }
 }

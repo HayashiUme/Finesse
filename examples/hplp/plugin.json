@@ -1,0 +1,77 @@
+{
+  "id": "finesse.hplp",
+  "name": "HPLP",
+  "version": "1.1.0",
+  "description": "Configure the public HPLP game-discovery endpoint.",
+  "allowedHosts": ["127.0.0.1", "localhost"],
+  "pages": [
+    {
+      "id": "settings",
+      "title": "Settings",
+      "description": "Configure the HPLP endpoint exposed by the Impostor plugin.",
+      "handler": "get_settings",
+      "sections": [
+        {
+          "type": "form",
+          "title": "HPLP configuration",
+          "actionId": "save_settings",
+          "fields": [
+            { "key": "enabled", "label": "Enable HPLP endpoint", "type": "checkbox" },
+            { "key": "includePrivateGames", "label": "Include private rooms", "type": "checkbox" },
+            { "key": "regionId", "label": "Region ID", "type": "text", "required": true, "maxLength": 32 },
+            { "key": "regionName", "label": "Region name", "type": "text", "required": true, "maxLength": 80 },
+            { "key": "publicUrl", "label": "Public HTTP URL (optional)", "type": "url", "maxLength": 512, "placeholder": "https://games.example.com" }
+          ]
+        }
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "id": "save_settings",
+      "label": "Save HPLP settings",
+      "handler": "save_settings",
+      "mutating": true
+    }
+  ],
+  "translations": {
+    "en": {
+      "name": "HPLP",
+      "description": "Configure the public HPLP game-discovery endpoint.",
+      "pages": {
+        "settings": {
+          "title": "Settings",
+          "description": "Manage HPLP discovery settings. The HPLP plugin provides its own API on port 8098.",
+          "sections": { "0": "HPLP configuration" },
+          "fields": {
+            "enabled": "Enable HPLP endpoint",
+            "includePrivateGames": "Include private rooms",
+            "regionId": "Region ID",
+            "regionName": "Region name",
+            "publicUrl": "Public HTTP URL (optional)"
+          }
+        }
+      },
+      "actions": { "save_settings": { "label": "Save HPLP settings" } }
+    },
+    "zh-CN": {
+      "name": "HPLP",
+      "description": "配置公开 HPLP 游戏发现接口。",
+      "pages": {
+        "settings": {
+          "title": "设置",
+          "description": "管理 HPLP 发现接口设置。HPLP 插件使用独立的 8098 端口提供 API。",
+          "sections": { "0": "HPLP 配置" },
+          "fields": {
+            "enabled": "启用 HPLP 接口",
+            "includePrivateGames": "包含私人房间",
+            "regionId": "区域 ID",
+            "regionName": "区域名称",
+            "publicUrl": "公开 HTTP 地址（可选）"
+          }
+        }
+      },
+      "actions": { "save_settings": { "label": "保存 HPLP 设置" } }
+    }
+  }
+}

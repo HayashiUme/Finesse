@@ -6,7 +6,8 @@ namespace Finesse.Plugin;
 
 public sealed record ExtensionSummary(string Id, string Name, string Version, string Description, IReadOnlyList<ExtensionPage> Pages, IReadOnlyList<ExtensionAction> Actions);
 public sealed record ExtensionPage(string Id, string Title, string? Description, string Handler, IReadOnlyList<ExtensionSection> Sections);
-public sealed record ExtensionSection(string Type, string Title, string? DataPath, IReadOnlyList<string>? Columns);
+public sealed record ExtensionSection(string Type, string Title, string? DataPath, IReadOnlyList<string>? Columns, IReadOnlyList<ExtensionFormField>? Fields = null, string? ActionId = null);
+public sealed record ExtensionFormField(string Key, string Label, string Type = "text", bool Required = false, int? MaxLength = null, string? Placeholder = null);
 public sealed record ExtensionAction(string Id, string Label, string Handler, bool Mutating, string? Confirm);
 public sealed record ExtensionPageResult(string PluginId, string PageId, JsonElement Data);
 
@@ -101,8 +102,20 @@ public sealed class ExtensionPluginService
             if (!IsIdentifier(page.Id) || !IsIdentifier(page.Handler) || string.IsNullOrWhiteSpace(page.Title) || page.Title.Length > 100 || page.Sections.Count > 16)
                 throw new InvalidDataException("Extension page fields are invalid.");
             foreach (var section in page.Sections)
-                if (section.Type is not ("stats" or "table" or "json") || string.IsNullOrWhiteSpace(section.Title) || section.Title.Length > 100 || (section.Columns?.Count ?? 0) > 20)
+                if (section.Type is not ("stats" or "table" or "json" or "form") || string.IsNullOrWhiteSpace(section.Title) || section.Title.Length > 100 || (section.Columns?.Count ?? 0) > 20)
                     throw new InvalidDataException("Extension section fields are invalid.");
+            foreach (var section in page.Sections.Where(section => section.Type == "form"))
+            {
+                var action = manifest.Actions.SingleOrDefault(candidate => candidate.Id == section.ActionId);
+                if (action is null || !action.Mutating || section.Fields is null || section.Fields.Count is < 1 or > 24 ||
+                    section.Fields.Select(field => field.Key).Distinct(StringComparer.Ordinal).Count() != section.Fields.Count)
+                    throw new InvalidDataException("Form sections require a mutating action and unique fields.");
+                foreach (var field in section.Fields)
+                    if (!IsIdentifier(field.Key) || string.IsNullOrWhiteSpace(field.Label) || field.Label.Length > 100 ||
+                        field.Type is not ("text" or "url" or "checkbox") || field.MaxLength is < 1 or > 512 ||
+                        (field.Type == "checkbox" && field.MaxLength.HasValue) || field.Placeholder?.Length > 200)
+                        throw new InvalidDataException("Extension form fields are invalid.");
+            }
         }
         foreach (var action in manifest.Actions)
             if (!IsIdentifier(action.Id) || !IsIdentifier(action.Handler) || string.IsNullOrWhiteSpace(action.Label) || action.Label.Length > 80)
@@ -120,7 +133,15 @@ public sealed class ExtensionPluginService
         finesse["language"] = DynValue.NewCallback((_, _) => DynValue.NewString(locale));
         finesse["t"] = DynValue.NewCallback((_, args) => DynValue.NewString(Translate(plugin.Definition, locale, Argument(args, 0).String, Argument(args, 1).String)));
         finesse["setting"] = DynValue.NewCallback((_, args) => DynValue.NewString(ReadSetting(plugin.Directory, Argument(args, 0).String)));
+        finesse["settings"] = DynValue.NewCallback((_, _) => DynValue.NewString(ReadSettings(plugin.Directory)));
+        finesse["saveSettings"] = DynValue.NewCallback((_, args) =>
+        {
+            if (!allowMutation) throw new ScriptRuntimeException("Settings can only be saved by a mutating action.");
+            SaveSettings(plugin.Directory, Argument(args, 0).String);
+            return DynValue.NewBoolean(true);
+        });
         finesse["request"] = DynValue.NewCallback((_, args) => DynValue.NewString(Request(plugin.AllowedHosts, args, allowMutation)));
+        finesse["requestBody"] = DynValue.NewCallback((_, args) => DynValue.NewString(RequestBody(plugin.AllowedHosts, args, allowMutation)));
         finesse["basic"] = DynValue.NewCallback((_, args) =>
         {
             var username = Argument(args, 0).String ?? string.Empty;
@@ -143,6 +164,57 @@ public sealed class ExtensionPluginService
         catch (JsonException) { throw new ManagementException(502, "extensionResponseInvalid"); }
     }
 
+    private static string ReadSettings(string directory)
+    {
+        var path = Path.Combine(directory, "settings.json");
+        if (!File.Exists(path)) return "{}";
+        try
+        {
+            var json = File.ReadAllText(path, Encoding.UTF8);
+            using var document = JsonDocument.Parse(json, new JsonDocumentOptions { MaxDepth = 16 });
+            if (document.RootElement.ValueKind != JsonValueKind.Object) return "{}";
+            return json;
+        }
+        catch (Exception ex) when (ex is IOException or JsonException or UnauthorizedAccessException) { return "{}"; }
+    }
+
+    private static void SaveSettings(string directory, string? json)
+    {
+        if (json is null || Encoding.UTF8.GetByteCount(json) > 64_000)
+            throw new ScriptRuntimeException("Extension settings are missing or too large.");
+        try
+        {
+            using var document = JsonDocument.Parse(json, new JsonDocumentOptions { MaxDepth = 16 });
+            if (document.RootElement.ValueKind != JsonValueKind.Object)
+                throw new ScriptRuntimeException("Extension settings must be a JSON object.");
+            var path = Path.Combine(directory, "settings.json");
+            var merged = new Dictionary<string, JsonElement>(StringComparer.Ordinal);
+            if (File.Exists(path))
+            {
+                try
+                {
+                    using var existing = JsonDocument.Parse(File.ReadAllBytes(path), new JsonDocumentOptions { MaxDepth = 16 });
+                    if (existing.RootElement.ValueKind == JsonValueKind.Object)
+                        foreach (var property in existing.RootElement.EnumerateObject()) merged[property.Name] = property.Value.Clone();
+                }
+                catch (JsonException) { }
+            }
+            foreach (var property in document.RootElement.EnumerateObject()) merged[property.Name] = property.Value.Clone();
+            var temp = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
+            try
+            {
+                File.WriteAllText(temp, JsonSerializer.Serialize(merged, new JsonSerializerOptions { WriteIndented = true }), new UTF8Encoding(false));
+                File.Move(temp, path, true);
+            }
+            finally { if (File.Exists(temp)) File.Delete(temp); }
+        }
+        catch (ScriptRuntimeException) { throw; }
+        catch (Exception ex) when (ex is IOException or JsonException or UnauthorizedAccessException)
+        {
+            throw new ScriptRuntimeException("Could not persist extension settings.");
+        }
+    }
+
     private static string ReadSetting(string directory, string? key)
     {
         if (string.IsNullOrWhiteSpace(key) || key.Length > 64) return string.Empty;
@@ -156,7 +228,10 @@ public sealed class ExtensionPluginService
         catch (Exception ex) when (ex is IOException or JsonException or UnauthorizedAccessException) { return string.Empty; }
     }
 
-    private static string Request(IReadOnlyList<string> allowedHosts, CallbackArguments args, bool allowMutation)
+    private static string Request(IReadOnlyList<string> allowedHosts, CallbackArguments args, bool allowMutation) => SendRequest(allowedHosts, args, allowMutation, bodyOnly: false);
+    private static string RequestBody(IReadOnlyList<string> allowedHosts, CallbackArguments args, bool allowMutation) => SendRequest(allowedHosts, args, allowMutation, bodyOnly: true);
+
+    private static string SendRequest(IReadOnlyList<string> allowedHosts, CallbackArguments args, bool allowMutation, bool bodyOnly)
     {
         var method = Argument(args, 0).String?.ToUpperInvariant();
         var urlText = Argument(args, 1).String;
@@ -197,6 +272,11 @@ public sealed class ExtensionPluginService
         var responseBody = responseBuffer.ToArray();
         var bodyText = Encoding.UTF8.GetString(responseBody);
         object bodyValue;
+        if (bodyOnly)
+        {
+            if (!response.IsSuccessStatusCode) throw new ScriptRuntimeException($"HTTP request failed with status {(int)response.StatusCode}.");
+            return bodyText;
+        }
         try
         {
             using var parsed = JsonDocument.Parse(bodyText, new JsonDocumentOptions { MaxDepth = 32 });
@@ -253,7 +333,7 @@ public sealed class ExtensionPluginService
                 var sections = page.Sections.Select((section, index) =>
                 {
                     var title = pageTranslation?.Sections?.GetValueOrDefault(index.ToString()) ?? section.Title;
-                    return section with { Title = title };
+                    return section with { Title = title, Fields = section.Fields?.Select(field => field with { Label = pageTranslation?.Fields?.GetValueOrDefault(field.Key) ?? field.Label }).ToArray() };
                 }).ToArray();
                 return page with { Title = pageTranslation?.Title ?? page.Title, Description = pageTranslation?.Description ?? page.Description, Sections = sections };
             }).ToArray();
@@ -279,6 +359,7 @@ public sealed class ExtensionPluginService
         public string? Title { get; set; }
         public string? Description { get; set; }
         public Dictionary<string, string>? Sections { get; set; }
+        public Dictionary<string, string>? Fields { get; set; }
     }
     private sealed class ExtensionActionTranslation
     {

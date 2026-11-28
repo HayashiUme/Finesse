@@ -30,3 +30,5 @@
 .extension-actions h3 { flex: 0 0 100%; margin-bottom: 3px; }
 .extension-empty { min-height: 130px; display: flex; align-items: center; justify-content: center; gap: 9px; color: var(--muted); text-align: center; }
 @media (max-width: 600px) { .extension-heading { align-items: flex-start; flex-wrap: wrap; } .extension-heading > div { flex-basis: calc(100% - 48px); order: 1; } .extension-heading > .secondary-btn { order: 0; } }
+
+.extension-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); align-items: end; gap: 10px 14px; }.extension-form .field-label { margin: 0; }.extension-form-checkbox { display: flex; align-items: center; gap: 9px; min-height: 42px; color: var(--text-secondary); font-size: 13px; }.extension-form-checkbox input { accent-color: var(--accent); width: 16px; height: 16px; }.extension-form > button { justify-self: start; min-height: 38px; }.extension-form > p { color: var(--muted); font-size: 12px; margin: 0; }

@@ -113,7 +113,7 @@ public sealed class FinesseHttpService : BackgroundService
             var isLoginRequest = context.Request.HttpMethod == "POST" &&
                 path is "/api/v1/auth/login/admin" or "/api/v1/auth/login/superadmin";
             var isExternalInterface = context.Request.HttpMethod == "GET" &&
-                path is "/" or "/index" or "/v2/api/games" or "/v2/api/monitor" or "/x-api/games";
+                path is "/" or "/index" or "/v2/api/games" or "/v2/api/monitor";
 
             if (context.Request.IsWebSocketRequest && path == "/api/v1/events")
             {
@@ -202,11 +202,6 @@ public sealed class FinesseHttpService : BackgroundService
                 activeConnections = snapshot.OnlinePlayers,
                 games = snapshot.Games.Select(game => new { code = game.Code, state = game.State, map = game.Map, playerCount = game.PlayerCount, host = game.HostName ?? "(none)" }),
             });
-        }
-        else if (request.HttpMethod == "GET" && path == "/x-api/games")
-        {
-            if (!_interfaces.GetXApiSettings().Enabled) throw new ManagementException(503, "xApiDisabled");
-            await WriteJsonAsync(context.Response, _interfaces.BuildXApiGames(_snapshots.GetSnapshot()));
         }
         else if (request.HttpMethod == "POST" && path is "/api/v1/auth/login/admin" or "/api/v1/auth/login/superadmin")
         {
@@ -330,17 +325,6 @@ public sealed class FinesseHttpService : BackgroundService
         {
             RequireSuperAdmin(user);
             await WriteJsonAsync(context.Response, _interfaces.GetSettings());
-        }
-        else if (request.HttpMethod == "GET" && path == "/api/v1/interface/x-api/preview")
-        {
-            RequireSuperAdmin(user);
-            await WriteJsonAsync(context.Response, _interfaces.BuildXApiGames(_snapshots.GetSnapshot()));
-        }
-        else if (request.HttpMethod == "PUT" && path == "/api/v1/interface/x-api")
-        {
-            RequireSuperAdmin(user);
-            var body = await ReadJsonAsync<XApiSettingsDto>(request, 16_384, cancellationToken);
-            await WriteJsonAsync(context.Response, _interfaces.UpdateXApi(body));
         }
         else if (request.HttpMethod == "POST" && path == "/api/v1/interface/keys")
         {
