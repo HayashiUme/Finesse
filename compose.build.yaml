@@ -1,7 +1,0 @@
-services:
-  dashboard:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        FINESSE_VERSION: ${FINESSE_VERSION:-}
