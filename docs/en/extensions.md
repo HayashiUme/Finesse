@@ -1,49 +1,126 @@
-# Finesse Extensions
+# Extension development
 
-Finesse extensions are server-side packages loaded from `Finesse/plugins/<package-id>/`. An extension can register workspace pages, declare display sections, call explicitly allowed HTTP hosts through Lua, and register operations. React renders the declared page using Finesse built-in components; extensions do not ship arbitrary JavaScript or React bundles in this first version.
+Finesse extensions are trusted Lua packages installed on an Impostor or Empostor server. An extension can add dashboard pages and actions through the documented manifest and Lua handler API. The dashboard renders built-in sections; an extension cannot inject JavaScript, HTML, or its own React bundle.
 
-## Install
+## Package layout
 
-Copy an extension folder containing `plugin.json` and `plugin.lua` into `Finesse/plugins/`, then restart Impostor. Invalid packages are skipped. Extension files are trusted server code: only install packages from sources you trust. Lua runs with MoonSharp's soft sandbox and receives only the `finesse` functions described below, but it shares the Finesse process and is not an operating-system security boundary.
+```text
+my-extension/
+├── plugin.json       # Metadata, pages, actions, host allowlist, translations
+├── plugin.lua        # Lua handlers
+└── settings.json     # Optional local secrets and configuration
+```
 
-`examples/hello-world/` is a minimal extension that makes no network requests and needs no settings. Copy it to `Finesse/plugins/hello-world/`. After restarting Impostor, open **Workspace > Extensions** in the dashboard and select **Hello World > Overview**. A `Ready` status and a JSON details panel confirm that the extension was loaded and its Lua handler ran.
+Copy the package directory to `Finesse/plugins/<package-id>/` beside the server executable, then restart the server. Each extension directory must include `plugin.json` and `plugin.lua`. Invalid packages are skipped. The example packages in the repository's `examples/` directory show a local-only extension and a read-only Rauter integration.
 
-`examples/rauter-cluster/` is a read-only Rauter API example. Copy that folder into `Finesse/plugins/rauter-cluster/`. Edit the installed package's `plugin.json` `allowedHosts` to exactly match the Rauter hostname. Add a sibling `settings.json` with the Rauter URL and a Rauter user-token username/password that is authorized to use `admin_api`:
+## Manifest reference
+
+A manifest has this shape (fields shown as optional may be omitted):
 
 ```json
 {
-  "baseUrl": "http://127.0.0.1:8080",
-  "username": "RAUTER_USER_TOKEN_NAME",
-  "password": "YOUR_RAUTER_USER_TOKEN_PASSWORD"
+  "id": "sample.status",
+  "name": "Server status",
+  "version": "1.0.0",
+  "description": "A server status page.",
+  "allowedHosts": ["rauter.example.net"],
+  "pages": [{
+    "id": "overview",
+    "title": "Overview",
+    "description": "Current status.",
+    "handler": "get_overview",
+    "sections": [
+      { "type": "stats", "title": "Status", "dataPath": "status" },
+      { "type": "table", "title": "Players", "dataPath": "players", "columns": ["name", "state"] },
+      { "type": "json", "title": "Raw data", "dataPath": "details" }
+    ]
+  }],
+  "actions": [{
+    "id": "refresh",
+    "label": "Refresh data",
+    "handler": "refresh_data",
+    "mutating": false,
+    "confirm": "Refresh now?"
+  }],
+  "translations": {}
 }
 ```
 
-The example reads `/admin_api/servers/`. It does not implement load-balancer draining, hot updates, or game-changing controls; those require explicit Rauter lifecycle APIs and per-instance command support.
+IDs use ASCII letters, digits, `.`, `_`, and `-`. Page and action IDs must be unique. A section reads the named property path from the handler's returned JSON object. `stats` displays values, `table` renders rows and uses explicit `columns` when provided, and `json` displays formatted JSON. Keep section titles and column labels short.
 
-## Manifest
+An action with `mutating: true` is restricted to the super administrator. `confirm` adds a browser confirmation prompt. Action handlers receive the request payload as a JSON string; the current dashboard invokes generic actions with `{}` because form components are not part of the extension API yet.
 
-`plugin.json` declares `id`, `name`, `version`, `description`, `allowedHosts`, `pages`, and `actions`. IDs use letters, digits, `.`, `_`, and `-`. Page sections support `stats`, `table`, and `json`, each reading a value from the Lua handler result with `dataPath`. Tables accept explicit `columns` or infer keys from the first row. Actions can set `mutating: true`; Finesse then requires a super administrator. A `confirm` string triggers a browser confirmation prompt.
+## Multilingual metadata and messages
 
-## Lua API
+The `translations` object is optional. Its keys are BCP 47 locale tags such as `en` and `zh-CN`. Missing translations fall back to the manifest's default-language fields. Locale lookup tries the exact locale, then its base language, then English. Existing manifests without `translations` continue to work unchanged.
 
-Each page request or operation creates a fresh sandbox and evaluates `plugin.lua`, then invokes the handler named by the manifest. Handlers return a JSON string (the HTTP result returned by `finesse.request` is already a JSON string).
+Translate extension name, description, page and section titles, action labels, and confirmation prompts in `plugin.json`. Section translations use the section's zero-based position as a string key. Add `messages` for text generated by Lua handlers. For example:
 
-```lua
-finesse.setting("key")
-finesse.basic("username", "password")
-finesse.request(method, absolute_url, headers_json, body_json)
+```json
+{
+  "translations": {
+    "en": {
+      "name": "Server status",
+      "pages": { "overview": { "title": "Overview", "sections": { "0": "State" } } },
+      "messages": { "ready": "Ready" }
+    },
+    "zh-CN": {
+      "name": "服务器状态",
+      "pages": { "overview": { "title": "概览", "sections": { "0": "状态" } } },
+      "messages": { "ready": "就绪" }
+    }
+  }
+}
 ```
 
-HTTP methods are limited to GET, POST, PUT, and DELETE. The target must use HTTP(S), and the hostname must exactly match an entry in `allowedHosts`. Redirects are disabled. Requests and responses have size limits and a 12 second client timeout. Store credentials in the installed package's `settings.json`, restrict filesystem access to server operators, and do not put secrets in `plugin.json` or `plugin.lua`.
+The dashboard sends its selected locale in `Accept-Language` on extension list, page, and action requests. Use the Lua helpers to localize handler output:
 
-An action handler receives its JSON request body as a Lua string and can return a JSON string. The current generic page renderer invokes actions with an empty object; extensions needing forms should wait for the typed form component API rather than embedding script or HTML into a page.
+```lua
+function get_overview()
+    local language = finesse.language() -- for locale-specific formatting when needed
+    local state = finesse.t("ready", "Ready")
+    return string.format([[{"status":{"State":"%s"},"language":"%s"}]], state, language)
+end
+```
 
-## API
+`finesse.t(key, fallback)` returns the selected locale's `translations[locale].messages[key]`; if it is missing, it returns `fallback`, or the key when no fallback is supplied. `finesse.language()` returns a normalized locale such as `zh-CN` or `en-US`.
 
-All routes require a signed-in Finesse account:
+## Lua handler lifecycle
+
+Finesse creates a fresh MoonSharp soft-sandbox for each page or action request, loads `plugin.lua`, and calls the handler named in the manifest. A handler returns a JSON string. Page results are read-only; actions marked mutating can make state changes. Keep handlers short and bounded because they run inside the server process.
+
+Available functions:
+
+| Function | Behavior |
+| --- | --- |
+| `finesse.language()` | Selected locale for this request. |
+| `finesse.t(key, fallback)` | Localized message with a fallback value. |
+| `finesse.setting(key)` | Reads a string from the extension's `settings.json`. |
+| `finesse.basic(user, password)` | Builds an HTTP Basic authorization value. |
+| `finesse.request(method, url, headersJson, bodyJson)` | Makes an allowlisted HTTP request and returns a JSON string. |
+
+The HTTP helper accepts GET, POST, PUT, and DELETE. The target must use HTTP(S), and its exact hostname must appear in `allowedHosts` (do not include ports or wildcards). Redirects are disabled. Requests and responses have size limits and a 12-second timeout. Read-only page handlers can only make GET requests; mutating requests are allowed only from mutating action handlers.
+
+Use `settings.json` for credentials and local configuration, and restrict it to the server operator's filesystem permissions. Never commit tokens or passwords into the manifest, Lua source, or public repository. A soft sandbox is not an operating-system security boundary: install only extensions you trust, avoid infinite loops and blocking work, and validate remote response data.
+
+## API routes
+
+All extension routes require a signed-in Finesse account.
 
 | Method | Route | Purpose |
 | --- | --- | --- |
-| GET | `/api/v1/extensions` | List valid installed extensions and their page/action manifests |
-| GET | `/api/v1/extensions/{id}/pages/{pageId}` | Invoke and return a page's data |
-| POST | `/api/v1/extensions/{id}/actions/{actionId}` | Invoke an extension operation; mutating actions require super administrator |
+| GET | `/api/v1/extensions` | List valid installed extensions with localized manifests. |
+| GET | `/api/v1/extensions/{id}/pages/{pageId}` | Run the page handler and return its data. |
+| POST | `/api/v1/extensions/{id}/actions/{actionId}` | Run an action; mutating actions require a super administrator. |
+
+## Test and troubleshoot
+
+1. Validate `plugin.json` with a JSON parser and ensure every declared handler exists in `plugin.lua`.
+2. Copy the folder under `Finesse/plugins/` and restart the server.
+3. Open **Workspace > Extensions** and confirm the extension, page, and translated labels appear.
+4. Switch the dashboard language and reopen the page to confirm the selected metadata and `finesse.t()` output change.
+5. If the extension is missing, check the server log for invalid JSON, duplicate IDs, unsupported section types, or a missing script. If an HTTP request fails, verify the exact hostname in `allowedHosts`, the action's mutation flag, and server reachability from the Impostor process.
+
+## Example packages
+
+`examples/hello-world/` demonstrates a local status page and English/Chinese translations without network access. `examples/rauter-cluster/` demonstrates read-only HTTP access to a declared Rauter host. It does not implement hot-update orchestration or game-changing controls.

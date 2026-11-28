@@ -9,7 +9,7 @@ Create keys in the server workspace's **Interface** page. A key starts with `sk-
 | `games` | `GET /v2/api/games` |
 | `monitor` | `GET /v2/api/monitor` |
 
-Missing, invalid, or out-of-scope keys receive HTTP `401` with `{"error":"interfaceApiKeyInvalid"}`. `GET /x-api/games` is public and does not require a key; it returns HTTP `503` when disabled in Interface settings. Revoking a key takes effect immediately.
+Missing, invalid, or out-of-scope keys receive HTTP `401` with `{"error":"interfaceApiKeyInvalid"}`. Revoking a key takes effect immediately. The separate public compatibility endpoint is documented in [X-API](/en/x-api).
 
 ## `GET /v2/api/games`
 
@@ -42,10 +42,6 @@ Returns active game rooms and players, following the data shape of Empostor's `a
 ## `GET /v2/api/monitor`
 
 Returns process status, UTC timestamp, process uptime, server version/runtime/platform, processor and memory information, and active room/player counts. The property names follow Empostor Monitor's status response, including `uptimeSeconds`, `uptimeDisplay`, `memoryMb`, `gameCount`, `playerCount`, `activeConnections`, and `games`.
-
-## `GET /x-api/games`
-
-Returns an HPLP-compatible object with `games` and `regions`. Public rooms are included by default. The Interface page can enable private rooms and configure the region ID, name, and URL. This data and all API key metadata persist under the server's `Finesse/` directory.
 
 ## Welcome page
 

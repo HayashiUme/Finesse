@@ -1,40 +1,30 @@
 import { defineConfig } from 'vitepress'
 
 const enSidebar = [
-  { text: 'Getting started', items: [
+  { text: 'Core documentation', items: [
     { text: 'Installation', link: '/en/installation' },
-    { text: 'User guide', link: '/en/guide' },
-    { text: 'Management features', link: '/en/management' },
-  ] },
-  { text: 'Reference', items: [
-    { text: 'HTTP API v1', link: '/en/api-v1' },
-    { text: 'Public API v2', link: '/en/api-v2' },
-    { text: 'Extensions', link: '/en/extensions' },
-    { text: 'Dashboard updater', link: '/en/dashboard-updater' },
-  ] },
-  { text: 'Project', items: [
+    { text: 'API v1', link: '/en/api-v1' },
+    { text: 'API v2', link: '/en/api-v2' },
+    { text: 'X-API', link: '/en/x-api' },
+    { text: 'Troubleshooting', link: '/en/docker-troubleshooting' },
     { text: 'Privacy policy', link: '/en/privacy-policy' },
-    { text: 'Docker troubleshooting', link: '/en/docker-troubleshooting' },
-    { text: 'Interface language', link: '/en/interface-localization' },
+  ] },
+  { text: 'Extension development', items: [
+    { text: 'Complete development guide', link: '/en/extensions' },
   ] },
 ]
 
 const zhSidebar = [
-  { text: '开始使用', items: [
+  { text: '核心文档', items: [
     { text: '安装与部署', link: '/zh-CN/installation' },
-    { text: '使用指南', link: '/zh-CN/guide' },
-    { text: '管理功能', link: '/zh-CN/management' },
-  ] },
-  { text: '接口与扩展', items: [
-    { text: 'HTTP API v1', link: '/zh-CN/api-v1' },
-    { text: '公开 API v2', link: '/zh-CN/api-v2' },
-    { text: '扩展插件', link: '/zh-CN/extensions' },
-    { text: '面板更新器', link: '/zh-CN/dashboard-updater' },
-  ] },
-  { text: '项目', items: [
+    { text: 'API v1', link: '/zh-CN/api-v1' },
+    { text: 'API v2', link: '/zh-CN/api-v2' },
+    { text: 'X-API', link: '/zh-CN/x-api' },
+    { text: '故障排查', link: '/zh-CN/docker-troubleshooting' },
     { text: '隐私政策', link: '/zh-CN/privacy-policy' },
-    { text: 'Docker 连接排查', link: '/zh-CN/docker-troubleshooting' },
-    { text: '界面语言', link: '/zh-CN/interface-localization' },
+  ] },
+  { text: '插件开发', items: [
+    { text: '完整开发文档', link: '/zh-CN/extensions' },
   ] },
 ]
 
@@ -58,25 +48,18 @@ export default defineConfig({
   themeConfig: {
     logo: '/images/miku-acg-icon.png',
     siteTitle: 'Finesse',
-    socialLinks: [{ icon: 'github', link: 'https://github.com/HayashiUme/Finesse' }],
-    footer: { message: 'Open source server management for Impostor.', copyright: 'Released under GPL-3.0.' },
     search: { provider: 'local' },
     nav: [
       { text: 'Documentation', link: '/en/installation' },
-      { text: 'API', items: [{ text: 'HTTP API v1', link: '/en/api-v1' }, { text: 'Public API v2', link: '/en/api-v2' }] },
-      { text: 'GitHub', link: 'https://github.com/HayashiUme/Finesse' },
     ],
     sidebar: { '/en/': enSidebar, '/zh-CN/': zhSidebar },
     locales: {
       root: { nav: [
         { text: 'Documentation', link: '/en/installation' },
-        { text: 'API', items: [{ text: 'HTTP API v1', link: '/en/api-v1' }, { text: 'Public API v2', link: '/en/api-v2' }] },
-        { text: 'GitHub', link: 'https://github.com/HayashiUme/Finesse' },
       ], sidebar: { '/en/': enSidebar } },
-      'zh-CN': { footer: { message: 'Impostor 开源服务器管理平台。', copyright: '基于 GPL-3.0 许可证发布。' }, nav: [
+      'zh-CN': { nav: [
         { text: '文档', link: '/zh-CN/installation' },
-        { text: '接口', items: [{ text: 'HTTP API v1', link: '/zh-CN/api-v1' }, { text: '公开 API v2', link: '/zh-CN/api-v2' }] },
-        { text: 'GitHub', link: 'https://github.com/HayashiUme/Finesse' },
+        { text: '接口', link: '/zh-CN/api-v2' },
       ], sidebar: { '/zh-CN/': zhSidebar } },
     },
   },

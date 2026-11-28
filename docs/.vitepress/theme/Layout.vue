@@ -11,16 +11,7 @@ const chinese = computed(() => locale.value === 'zh-CN')
 const localeRoot = computed(() => chinese.value ? '/zh-CN/' : '/en/')
 type NavItem = { text: string; link: string }
 type NavGroup = { text: string; items: NavItem[] }
-const sidebar = computed(() => {
-  const groups: NavGroup[] = site.value.themeConfig.sidebar?.[localeRoot.value] ?? []
-  const listed = new Set(groups.flatMap(group => group.items.map(item => item.link)))
-  const additional = documents.filter(({ link }) =>
-    link.startsWith(localeRoot.value) && link !== localeRoot.value && !listed.has(link),
-  )
-  return additional.length
-    ? [...groups, { text: chinese.value ? '更多文档' : 'More docs', items: additional }]
-    : groups
-})
+const sidebar = computed(() => site.value.themeConfig.sidebar?.[localeRoot.value] ?? [])
 const currentLink = computed(() => '/' + page.value.relativePath
   .replace(/(^|\/)index\.md$/, '$1').replace(/\.md$/, ''))
 const activeTitle = computed(() => frontmatter.value.title || page.value.title || (chinese.value ? '文档' : 'Documentation'))
@@ -29,13 +20,14 @@ const visibleGroups = computed(() => {
   if (!needle) return sidebar.value
   return sidebar.value.map(group => ({ ...group, items: group.items.filter(item => item.text.toLocaleLowerCase().includes(needle)) })).filter(group => group.items.length)
 })
-const languageLink = computed(() => {
-  const targetPrefix = chinese.value ? '/en/' : '/zh-CN/'
+function switchLanguage(target: string) {
+  const targetPrefix = target === 'zh-CN' ? '/zh-CN/' : '/en/'
   const counterpart = targetPrefix + (currentLink.value.startsWith(localeRoot.value)
     ? currentLink.value.slice(localeRoot.value.length)
     : '')
-  return withBase(documents.some(({ link }) => link === counterpart) ? counterpart : targetPrefix)
-})
+  const destination = documents.some(({ link }) => link === counterpart) ? counterpart : targetPrefix
+  window.location.href = withBase(destination)
+}
 const toggleTheme = () => { isDark.value = !isDark.value }
 </script>
 
@@ -55,9 +47,6 @@ const toggleTheme = () => { isDark.value = !isDark.value }
           <a v-for="item in group.items" :key="item.link" :href="withBase(item.link)" :class="{ active: currentLink === item.link }" :aria-current="currentLink === item.link ? 'page' : undefined" @click="mobileOpen = false">{{ item.text }}</a>
         </section>
       </nav>
-      <a class="sidebar-github" href="https://github.com/HayashiUme/Finesse" target="_blank" rel="noreferrer">
-        <span class="github-mark">↗</span><span>{{ chinese ? '在 GitHub 上查看' : 'View on GitHub' }}</span><span class="external">↗</span>
-      </a>
     </aside>
 
     <main class="docs-main">
@@ -65,9 +54,14 @@ const toggleTheme = () => { isDark.value = !isDark.value }
         <button class="mobile-menu" :aria-label="chinese ? '打开导航' : 'Open navigation'" @click="mobileOpen = true">☰</button>
         <div class="breadcrumbs"><a :href="withBase(localeRoot)">Finesse</a><span>/</span><strong>{{ activeTitle }}</strong></div>
         <div class="top-actions">
-          <a class="top-button language-button" :href="languageLink" :lang="chinese ? 'en' : 'zh-CN'">{{ chinese ? 'EN' : '中文' }}</a>
+          <label class="language-switcher">
+            <span class="sr-only">{{ chinese ? '切换语言' : 'Change language' }}</span>
+            <select :value="locale" :aria-label="chinese ? '切换语言' : 'Change language'" @change="switchLanguage(($event.target as HTMLSelectElement).value)">
+              <option value="en">English</option>
+              <option value="zh-CN">简体中文</option>
+            </select>
+          </label>
           <button class="top-button theme-button" :aria-label="chinese ? '切换主题' : 'Toggle theme'" @click="toggleTheme">{{ isDark ? '☼' : '☾' }}</button>
-          <a class="top-button github-button" href="https://github.com/HayashiUme/Finesse" target="_blank" rel="noreferrer">GitHub <span>↗</span></a>
         </div>
       </header>
 
@@ -78,7 +72,7 @@ const toggleTheme = () => { isDark.value = !isDark.value }
             <h1>{{ frontmatter.hero?.name || 'Finesse' }}</h1>
             <h2>{{ frontmatter.hero?.text }}</h2>
             <p>{{ frontmatter.hero?.tagline }}</p>
-            <div class="hero-actions"><a class="primary-action" :href="withBase(localeRoot + 'installation')">{{ chinese ? '开始使用' : 'Get started' }} <span>→</span></a><a class="secondary-action" :href="withBase(localeRoot + 'guide')">{{ chinese ? '浏览使用指南' : 'Browse the guide' }}</a></div>
+            <div class="hero-actions"><a class="primary-action" :href="withBase(localeRoot + 'installation')">{{ chinese ? '开始使用' : 'Get started' }} <span>→</span></a><a class="secondary-action" :href="withBase(localeRoot + 'extensions')">{{ chinese ? '浏览插件开发文档' : 'Explore extension development' }}</a></div>
           </div>
           <div class="hero-art"><div class="art-orbit orbit-one"></div><div class="art-orbit orbit-two"></div><img :src="withBase('/images/miku-acg-icon.png')" alt="Finesse" /><span class="art-spark spark-one">✦</span><span class="art-spark spark-two">✧</span><span class="art-dot"></span></div>
         </section>
@@ -91,10 +85,8 @@ const toggleTheme = () => { isDark.value = !isDark.value }
       </div>
 
       <div v-else class="article-layout">
-        <article class="article-card"><div class="article-kicker">{{ chinese ? 'FINESSE 文档' : 'FINESSE DOCUMENTATION' }}</div><Content class="vp-doc" /></article>
-        <aside class="article-rail"><div class="rail-card"><span class="rail-icon">✦</span><h3>{{ chinese ? '快速开始' : 'Quick start' }}</h3><p>{{ chinese ? '准备好管理你的 Impostor 服务器了吗？' : 'Ready to manage your Impostor server?' }}</p><a :href="withBase(localeRoot + 'installation')">{{ chinese ? '查看安装指南' : 'Read installation guide' }} <span>→</span></a></div><div class="rail-note">{{ chinese ? 'Finesse · 服务器管理' : 'Finesse · Server management' }}</div></aside>
+        <article class="article-card"><Content class="vp-doc" /></article>
       </div>
-      <footer class="docs-footer"><span>Finesse</span><span>{{ chinese ? '开源服务器管理平台' : 'Open source server management' }}</span><a href="https://github.com/HayashiUme/Finesse">GPL-3.0 · GitHub ↗</a></footer>
     </main>
   </div>
 </template>

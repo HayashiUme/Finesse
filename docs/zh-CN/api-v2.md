@@ -12,9 +12,7 @@ V2 API 用于外部程序读取经过授权的服务器数据。超级管理员�
 
 返回 UTC 时间戳、插件运行时间、服务器版本、运行时平台、CPU 与内存、活动房间和玩家数。字段包括 `uptimeSeconds`、`memoryMb`、`gameCount`、`playerCount` 和 `games`。
 
-## X-API：`/x-api/games`
-
-这是公开兼容接口，不需要 API Key。它返回 HPLP 风格的 `games` 和 `regions` 对象，可在 Finesse 的**接口**页面设置区域信息并选择公开房间。请仅公开适合匿名访问的数据。
+X-API 是独立的公开兼容接口，不需要 API Key；配置和响应格式请参阅 [X-API 使用说明](/zh-CN/x-api)。
 
 ## 自定义欢迎页
 
