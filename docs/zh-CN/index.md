@@ -1,3 +1,20 @@
+---
+layout: home
+title: Finesse 文档
+titleTemplate: false
+hero:
+  name: Finesse
+  text: Impostor 服务器管理
+  tagline: 清晰了解安装、运行和扩展你的服务器。
+features:
+  - title: 一个面板，管理多台服务器
+    details: 保存服务器连接，并在同一个工作区管理 Impostor 实例。
+  - title: 默认重视安全
+    details: 了解 HTTPS、管理员账户、会话与持久化数据。
+  - title: 为扩展而设计
+    details: 通过版本化 API 集成，或使用 Lua 扩展功能。
+---
+
 # Finesse 文档
 
 Finesse 是适用于 Impostor 和 Empostor 的自托管服务器管理平台。仪表盘直接连接各服务器上的管理插件，展示实时服务器数据，不使用演示数据。

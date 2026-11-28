@@ -46,7 +46,7 @@ export default defineConfig({
   cleanUrls: true,
   lastUpdated: true,
   head: [
-    ['meta', { name: 'theme-color', content: '#c8a2c8' }],
+    ['meta', { name: 'theme-color', content: '#39c5bb' }],
     ['link', { rel: 'icon', type: 'image/png', href: '/Finesse/images/miku-acg-icon.png' }],
   ],
   locales: {

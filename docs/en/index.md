@@ -1,3 +1,20 @@
+---
+layout: home
+title: Finesse Documentation
+titleTemplate: false
+hero:
+  name: Finesse
+  text: Impostor Server Management
+  tagline: A calm, clear guide to installing, operating and extending your servers.
+features:
+  - title: One dashboard, multiple servers
+    details: Save server connections and manage each Impostor instance from a shared workspace.
+  - title: Secure by default
+    details: Learn about HTTPS, administrator accounts, sessions and persistent server data.
+  - title: Built to extend
+    details: Integrate through versioned APIs or add trusted Lua extensions.
+---
+
 # Finesse documentation
 
 Finesse is a self-hosted server management platform for Impostor and Empostor. The dashboard connects to the management plugin on each server and displays live server data; it does not use demo data.
@@ -14,5 +31,3 @@ Finesse is a self-hosted server management platform for Impostor and Empostor. T
 - [Docker troubleshooting](./docker-troubleshooting.md): browser-to-plugin connectivity and container logs.
 - [Privacy policy](./privacy-policy.md): browser and server-side data handling.
 - [Interface language](./interface-localization.md): supported languages and translation workflow.
-
-Choose **简体中文** from the language menu to read the translated documentation.
